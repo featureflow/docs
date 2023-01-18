@@ -1,0 +1,46 @@
+---
+title: Managing Feature Variants
+sidebar_label: Managing Feature Variants
+slug: /managing-feature-variants
+---
+
+# Managing Feature Variants
+
+Variants are a simple but powerful concept.
+A feature can have any number of variants. The most basic feature has two variants - 'off' and 'on'.
+
+As you create new versions of your feature or wish to test variations against each other, you will create new variants.
+
+They may be improvements, alternatives for a/b testing or functions such as maintenance mode.
+
+Navigate to the features list in any environment
+
+Click the feature name to open the feature detail view
+
+Select the 'Settings' tab
+
+Click 'Add Variant' to add a new variant
+
+* key: is the variant-unique key that your application will use to identify the variant
+* name: is a friendly name
+* description: is and additional description field
+
+Click 'Save Feature Settings' to save your changes.
+
+Examples may be:
+* "1.1" - To identify a particular version of a feature
+* "simple"/"advanced" - To identify different types of a feature
+* "normal"/"maintenance" - to identify different modes of operation for a feature
+
+Now that you have defined your variants you can target and set them in the 'update rules' dialog for the feature.
+
+#### Modifying variants changes across all environments
+
+You should manage your variants carefully as they are applied across all environments. If a variant is removed any environment using that variant will fall back to the default variant. If the default variant is using a variant that is removed then if will fall back to the failover variant.
+Featureflow maintains sensible safeguards against modifying variants that are in use.
+
+You can alternatively define your variants directly in your code. When you register a feature with a list of variants defined featureflow will make them available in the UI.
+
+
+#### What's Next?
+Want to tread lightly? You can roll out your features and variants gradually to a percentage of users:
