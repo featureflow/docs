@@ -65,12 +65,12 @@ const config = {
             position: 'left',
             label: 'Guide',
           },
-          {
+         /* {
             type: 'doc',
             docId: 'quickstart/index',
             position: 'left',
             label: 'Quick Start',
-          },
+          },*/
           {
             href: 'https://github.com/featureflow',
             label: 'GitHub',

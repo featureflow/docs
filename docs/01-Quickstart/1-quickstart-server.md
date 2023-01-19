@@ -307,4 +307,4 @@ Thats the basics to get started.
 
 Check out the User guide for to learn how to manage gradual rollouts, targeting, and multiple feature variants. 
 
-You may wish to try the  [javascript client SDK](../sdk/javascript.mdx) started to manage your front-end.
+You may wish to try the  [javascript client SDK](docs/05-SDKs/javascript.mdx) started to manage your front-end.
