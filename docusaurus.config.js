@@ -36,10 +36,6 @@ const config = {
         docs: {
           sidebarPath: require.resolve('./sidebars.js'),
           routeBasePath: '/', // Serve the docs at the site's root
-          // Please change this to your repo.
-          // Remove this to remove the "edit this page" links.
-          //editUrl:
-          //  'https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/',
         },
         blog: false,
         theme: {
@@ -59,13 +55,13 @@ const config = {
           src: 'img/featureflow-logo.png',
         },
         items: [
-          {
+          /*{
             type: 'doc',
-            docId: 'intro',
+            docId: 'index',
             position: 'left',
-            label: 'Guide',
+            label: 'Docs',
           },
-         /* {
+          {
             type: 'doc',
             docId: 'quickstart/index',
             position: 'left',
@@ -86,7 +82,7 @@ const config = {
             items: [
               {
                 label: 'Overview',
-                to: '/docs/intro',
+                to: '/docs/index',
               },
               {
                 label: 'Quick Start',
