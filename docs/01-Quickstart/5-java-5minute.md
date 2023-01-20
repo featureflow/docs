@@ -168,7 +168,7 @@ private static FeatureflowUser getUser(){
 
 We could go on, but I think our ten minutes are up.
 
-You may wish to go a further and learn about [gradual rollouts](/docs/gradual-rollouts), more about [variants](/docs/managing-feature-variants) and [feature targeting](/docs/targeting-features).
+You may wish to go a further and learn about [gradual rollouts](/gradual-rollouts), more about [variants](/managing-feature-variants) and [feature targeting](/targeting-features).
 
 You may also want to try the same 5 minute test in the javascript API so you can get a synchronised front and back-end.
 
