@@ -17,8 +17,9 @@ const config = {
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.
   organizationName: 'featureflow', // Usually your GitHub org/user name.
-  projectName: 'docs', // Usually your repo name.
-
+  projectName: 'featureflow.github.io/docs', // Usually your repo name.
+  deploymentBranch: 'main',
+  trailingSlash: false,
   themes: ['@docusaurus/theme-live-codeblock'],
   // Even if you don't use internalization, you can use this field to set useful
   // metadata like html lang. For example, if your site is Chinese, you may want
