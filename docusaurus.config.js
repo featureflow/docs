@@ -9,7 +9,7 @@ const config = {
   title: 'Featureflow Docs',
   tagline: '',
   url: 'https://docs.featureflow.io',
-  baseUrl: '/docs',
+  baseUrl: '/',
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
   favicon: 'img/favicon.ico',
