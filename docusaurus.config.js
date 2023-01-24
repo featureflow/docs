@@ -8,7 +8,7 @@ const darkCodeTheme = require('prism-react-renderer/themes/dracula');
 const config = {
   title: 'Featureflow Docs',
   tagline: '',
-  url: 'https://docs.featureflow.com',
+  url: 'https://docs.featureflow.io',
   baseUrl: '/',
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
