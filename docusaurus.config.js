@@ -82,7 +82,7 @@ const config = {
             title: 'Links',
             items: [
               {
-                label: 'featureflow.com Home',
+                label: 'featureflow.com',
                 href: 'https://featureflow.com',
               },
               {
