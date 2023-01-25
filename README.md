@@ -1,6 +1,10 @@
 # Website
 
-This website is built using [Docusaurus 2](https://docusaurus.io/), a modern static website generator.
+This is the feeatureflow docs static site. 
+
+This site contains all of the readme at docs.featuerflow.io
+
+This website is built using [Docusaurus 2](https://docusaurus.io/).
 
 ### Installation
 
@@ -26,16 +30,8 @@ This command generates static content into the `build` directory and can be serv
 
 ### Deployment
 
-Using SSH:
-
-```
-$ USE_SSH=true yarn deploy
-```
-
-Not using SSH:
-
 ```
 $ GIT_USER=<Your GitHub username> yarn deploy
 ```
 
-If you are using GitHub pages for hosting, this command is a convenient way to build the website and push to the `gh-pages` branch.
+Build the website and push to the `gh-pages` branch.
