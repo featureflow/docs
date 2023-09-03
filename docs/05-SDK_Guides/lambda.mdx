@@ -4,10 +4,10 @@ sidebar_label: AWS Lambda
 slug: /using-featureflow-with-aws-lambda
 ---
 
-# Overview
+## Overview
 This guide demonstrates using featureflow in an AWS Lambda serverless function.
 
-# Prerequisites
+## Prerequisites
 
 #### You will need:
 
@@ -20,7 +20,7 @@ See [serverless.com](https://serverless.com) to install the serverless command l
 
 Clone the Github example code: https://github.com/featureflow/featureflow-lambda-edge-example
 
-# Create the lambda
+## Create the lambda
 
 Clone the example code at https://github.com/featureflow/featureflow-lambda-edge-example
 
@@ -177,18 +177,18 @@ if (featureflow.evaluate('lambda-redirect', user).is("original")){
 
 Here we are checking a feature flag named `lambda-redirect` - given the outcome of the evaluation we redirect the user with a 302.
 
-# Deploy the lambda
+## Deploy the lambda
 
-## IAM Role for the lambda
+#### IAM Role for the lambda
 The lambda has a very basic IAM role set up that will be created by `serverless`. The role has access to write to CloudWatch logs, and it can be assumed by `lambda` and `edgelambda` services. For production, the logs should be more restrictive than the AWS managed `AWSLambdaBasicExecutionRole`.
 
 Set up a profile that has access to create cloudformation templates, access S3 etc. Please check the relevant [documentation of serverless](https://serverless.com/framework/docs/providers/aws/guide/credentials/).
 
 ```bash
-serverless deploy --aws-profile=my-profile-name
+serverless deploy
 ```
 
-# Create the feature flag in featureflow
+## Create the feature flag in featureflow
 
 Create a feature in the featureflow console with a matching key (in this example, `lambda-redirect`)
 
@@ -204,7 +204,7 @@ In the above example, we redirect if the `date` is after a certain date. Date is
 
 We also target the `country` attribute, which we get from `cloudfront-viewer-country` header.
 
-# Test the lambda
+## Test the lambda
 In the lambda view click 'test' and create an event, for example:
 
 ```json
@@ -276,17 +276,17 @@ On the next screen you will need to select which distribution you are deploying 
 
 Viewer request is evaluated _before_ the cache is hit, otherwise the cache would continue to return with the first evaluated variant.
 
-### First step
+__Select 'Deploy to Lambda@Edge'__
 ![Deploy first step](/img/lambda-deploy-1.png "Deploy first step")
 
-### Second step
+__Configure a basic trigger and click deploy__
 ![Deploy second step](/img/lambda-deploy-2.png "Deploy second step")
 
 After the function is deployed make a request to the cloudfront url, you should be redirected to the failover endpoint.
 
 Note that the logs will be written to a region that is close to the CDN edge node that is serving you. For example even though the Lambda is in `us-east-1` it is now deployed throughout the distribution and if you are in France for example the logs of the edge function will be written to the Paris region.
 
-### Links
+## Links
 
 Github repo: https://github.com/featureflow/featureflow-lambda-edge-example
 
