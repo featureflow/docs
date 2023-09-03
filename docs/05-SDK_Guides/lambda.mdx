@@ -42,8 +42,6 @@ So the first lines of this function are simply to require the nodejs library and
 
 Replace `sdk-srv-env-YOUR-KEY` with the Server SDK key from your associated featureflow environment.
 
-![Copy the Server SDK Key](/img/featureflow-select-sdk-key.png "Select the Server Environment SDK Key")
-
 ```javascript
 'use strict';
 var Featureflow = require('featureflow-node-sdk');
@@ -52,6 +50,8 @@ var featureflow = new Featureflow.Client({apiKey: 'sdk-srv-env-YOUR-KEY'});
 
 exports.handler = async (event) => {
 ```
+
+![Copy the Server SDK Key](/img/featureflow-select-sdk-key.png "Select the Server Environment SDK Key")
 
 Next we create our handler and add the featureflow evaluation code.
 
@@ -111,9 +111,9 @@ exports.handler = async (event) => {
 
 We've put a bit in here so let's unpack it:
 
-Firstly, we get some context from the incoming request. From the incoming request we grab one Lambda injected header and one custom header, `country` and `cohort`.
+Firstly, we get some context. From the incoming request we grab one Lambda injected header and one custom header, `country` and `cohort`.
 
-We will use thse values in our feature evaluations.
+We will use these values in our feature evaluations.
 
 ```javascript
   const country = headers['cloudfront-viewer-country'] ? headers['cloudfront-viewer-country'][0].value : "US";
@@ -130,7 +130,7 @@ let user = new Featureflow.UserBuilder("exampleuser@featureflow.io")
       .build();
 ```
 
-We call the `await` function to ensure that featureflow is ready. This covers for the case of the very first lambda invocation, where featureflow may still be pulling feature configuration from featureflow.
+We call the `await` function to ensure that featureflow is ready. This covers for the case of the very first lambda invocation, where the SDK may still be pulling feature configuration from featureflow.
 
 ```
 await featureflow.waitForReady();
@@ -285,3 +285,9 @@ Viewer request is evaluated _before_ the cache is hit, otherwise the cache would
 After the function is deployed make a request to the cloudfront url, you should be redirected to the failover endpoint.
 
 Note that the logs will be written to a region that is close to the CDN edge node that is serving you. For example even though the Lambda is in `us-east-1` it is now deployed throughout the distribution and if you are in France for example the logs of the edge function will be written to the Paris region.
+
+### Links
+
+Github repo: https://github.com/featureflow/featureflow-lambda-edge-example
+
+2-minute video guide: https://www.youtube.com/watch?v=VbcLbwJirGo
