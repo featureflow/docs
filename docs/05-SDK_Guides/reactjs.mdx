@@ -98,6 +98,14 @@ If you want to render a different component while waiting on response from featu
 
 This is especially useful if you may have a race condition with your application on initial load of features.
 
+:::tip
+
+Note that loading featureflow features is highly optimised and globally cached. Features typically load in milliseconds (often < 2ms). 
+
+In addition, any reloads are cached on the local browser making subsequent feature loads practically instant.
+
+:::
+
 ```javascript
 
 const featureflowConfig = {
