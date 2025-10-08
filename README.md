@@ -1,6 +1,6 @@
 # Website
 
-This is the feeatureflow docs static site. 
+This is the featureflow docs static site.
 
 This site contains all of the readme at docs.featuerflow.io
 

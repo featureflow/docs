@@ -18,7 +18,7 @@ This Quick start is designed to get featureflow into your existing application a
 <dependency>
     <groupId>io.featureflow</groupId>
     <artifactId>featureflow-java-sdk</artifactId>
-    <version>1.1.2</version>
+    <version>1.2.1</version>
 </dependency>
 ```
 
