@@ -1,0 +1,596 @@
+{
+    "openapi": "3.0.1",
+    "info": {
+      "title": "Featureflow Authentication API",
+      "description": "REST API for user authentication and authorization with social login support",
+      "contact": {
+        "name": "Featureflow Team",
+        "url": "https://featureflow.com",
+        "email": "support@featureflow.com"
+      },
+      "license": {
+        "name": "MIT License",
+        "url": "https://opensource.org/licenses/MIT"
+      },
+      "version": "1.0.0"
+    },
+    "servers": [
+      {
+        "url": "http://localhost:8080",
+        "description": "Development server"
+      },
+      {
+        "url": "https://api.featureflow.com",
+        "description": "Production server"
+      }
+    ],
+    "security": [
+      {
+        "Bearer Authentication": []
+      }
+    ],
+    "tags": [
+      {
+        "name": "OAuth2",
+        "description": "OAuth2 authentication endpoints"
+      },
+      {
+        "name": "Authentication",
+        "description": "Authentication and authorization endpoints"
+      }
+    ],
+    "paths": {
+      "/auth/register": {
+        "post": {
+          "tags": [
+            "Authentication"
+          ],
+          "summary": "Register new user",
+          "description": "Register a new user with email, username, and password",
+          "operationId": "register",
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterRequest"
+                }
+              }
+            },
+            "required": true
+          },
+          "responses": {
+            "409": {
+              "description": "Email or username already exists",
+              "content": {
+                "*/*": {
+                  "schema": {
+                    "$ref": "#/components/schemas/AuthResponse"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid request data",
+              "content": {
+                "*/*": {
+                  "schema": {
+                    "$ref": "#/components/schemas/AuthResponse"
+                  }
+                }
+              }
+            },
+            "200": {
+              "description": "User registered successfully",
+              "content": {
+                "*/*": {
+                  "schema": {
+                    "$ref": "#/components/schemas/AuthResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/auth/refresh": {
+        "post": {
+          "tags": [
+            "Authentication"
+          ],
+          "summary": "Refresh JWT token",
+          "description": "Refresh the JWT token using a valid refresh token",
+          "operationId": "refreshToken",
+          "parameters": [
+            {
+              "name": "Authorization",
+              "in": "header",
+              "required": true,
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Token refreshed successfully",
+              "content": {
+                "*/*": {
+                  "schema": {
+                    "$ref": "#/components/schemas/AuthResponse"
+                  }
+                }
+              }
+            },
+            "401": {
+              "description": "Invalid refresh token",
+              "content": {
+                "*/*": {
+                  "schema": {
+                    "$ref": "#/components/schemas/AuthResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/auth/logout": {
+        "post": {
+          "tags": [
+            "Authentication"
+          ],
+          "summary": "Logout user",
+          "description": "Logout the current user and invalidate the token",
+          "operationId": "logout",
+          "parameters": [
+            {
+              "name": "Authorization",
+              "in": "header",
+              "required": true,
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "401": {
+              "description": "Invalid token",
+              "content": {
+                "*/*": {
+                  "schema": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            },
+            "200": {
+              "description": "Logout successful",
+              "content": {
+                "*/*": {
+                  "schema": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/auth/google": {
+        "post": {
+          "tags": [
+            "Authentication"
+          ],
+          "summary": "Google OAuth login",
+          "description": "Authenticate user with Google ID token",
+          "operationId": "googleLogin",
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoogleLoginRequest"
+                }
+              }
+            },
+            "required": true
+          },
+          "responses": {
+            "401": {
+              "description": "Google authentication failed",
+              "content": {
+                "*/*": {
+                  "schema": {
+                    "$ref": "#/components/schemas/AuthResponse"
+                  }
+                }
+              }
+            },
+            "200": {
+              "description": "Google login successful",
+              "content": {
+                "*/*": {
+                  "schema": {
+                    "$ref": "#/components/schemas/AuthResponse"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid Google token",
+              "content": {
+                "*/*": {
+                  "schema": {
+                    "$ref": "#/components/schemas/AuthResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/auth/authenticate": {
+        "post": {
+          "tags": [
+            "Authentication"
+          ],
+          "summary": "Authenticate user",
+          "description": "Login with username/email and password",
+          "operationId": "login",
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginRequest"
+                }
+              }
+            },
+            "required": true
+          },
+          "responses": {
+            "400": {
+              "description": "Invalid credentials",
+              "content": {
+                "*/*": {
+                  "schema": {
+                    "$ref": "#/components/schemas/AuthResponse"
+                  }
+                }
+              }
+            },
+            "200": {
+              "description": "Login successful",
+              "content": {
+                "*/*": {
+                  "schema": {
+                    "$ref": "#/components/schemas/AuthResponse"
+                  }
+                }
+              }
+            },
+            "401": {
+              "description": "Authentication failed",
+              "content": {
+                "*/*": {
+                  "schema": {
+                    "$ref": "#/components/schemas/AuthResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/oauth2/login/google": {
+        "get": {
+          "tags": [
+            "OAuth2"
+          ],
+          "summary": "Initiate Google OAuth2 login",
+          "description": "Redirects to Google OAuth2 authorization endpoint",
+          "operationId": "googleLogin_1",
+          "responses": {
+            "200": {
+              "description": "Redirect URL provided",
+              "content": {
+                "*/*": {
+                  "schema": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/oauth2/login/github": {
+        "get": {
+          "tags": [
+            "OAuth2"
+          ],
+          "operationId": "githubLogin",
+          "responses": {
+            "200": {
+              "description": "OK",
+              "content": {
+                "*/*": {
+                  "schema": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/oauth2/login-success": {
+        "get": {
+          "tags": [
+            "OAuth2"
+          ],
+          "operationId": "loginSuccess",
+          "responses": {
+            "200": {
+              "description": "OK",
+              "content": {
+                "*/*": {
+                  "schema": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/oauth2/login-failure": {
+        "get": {
+          "tags": [
+            "OAuth2"
+          ],
+          "operationId": "loginFailure",
+          "responses": {
+            "200": {
+              "description": "OK",
+              "content": {
+                "*/*": {
+                  "schema": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/auth/me": {
+        "get": {
+          "tags": [
+            "Authentication"
+          ],
+          "summary": "Get current user",
+          "description": "Get information about the currently authenticated user",
+          "operationId": "getCurrentUser",
+          "parameters": [
+            {
+              "name": "Authorization",
+              "in": "header",
+              "required": true,
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "User information retrieved successfully",
+              "content": {
+                "*/*": {
+                  "schema": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            },
+            "401": {
+              "description": "Invalid token",
+              "content": {
+                "*/*": {
+                  "schema": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "components": {
+      "schemas": {
+        "RegisterRequest": {
+          "required": [
+            "email",
+            "firstName",
+            "lastName",
+            "password",
+            "username"
+          ],
+          "type": "object",
+          "properties": {
+            "username": {
+              "maxLength": 50,
+              "minLength": 3,
+              "type": "string"
+            },
+            "email": {
+              "type": "string"
+            },
+            "password": {
+              "maxLength": 2147483647,
+              "minLength": 6,
+              "type": "string"
+            },
+            "firstName": {
+              "type": "string"
+            },
+            "lastName": {
+              "type": "string"
+            }
+          }
+        },
+        "AuthResponse": {
+          "type": "object",
+          "properties": {
+            "token": {
+              "type": "string"
+            },
+            "refreshToken": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string"
+            },
+            "user": {
+              "$ref": "#/components/schemas/UserResponse"
+            },
+            "organisation": {
+              "$ref": "#/components/schemas/OrganisationResponse"
+            },
+            "expiresAt": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        },
+        "OrganisationResponse": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "domain": {
+              "type": "string"
+            },
+            "stripeCustomerId": {
+              "type": "string"
+            },
+            "stripeKey": {
+              "type": "string"
+            }
+          }
+        },
+        "UserResponse": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "username": {
+              "type": "string"
+            },
+            "email": {
+              "type": "string"
+            },
+            "firstName": {
+              "type": "string"
+            },
+            "lastName": {
+              "type": "string"
+            },
+            "profilePicture": {
+              "type": "string"
+            },
+            "roles": {
+              "uniqueItems": true,
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "emailVerified": {
+              "type": "boolean"
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "lastLoginAt": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        },
+        "GoogleLoginRequest": {
+          "required": [
+            "token",
+            "user"
+          ],
+          "type": "object",
+          "properties": {
+            "token": {
+              "type": "string"
+            },
+            "user": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "LoginRequest": {
+          "required": [
+            "password",
+            "usernameOrEmail"
+          ],
+          "type": "object",
+          "properties": {
+            "usernameOrEmail": {
+              "type": "string"
+            },
+            "password": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "securitySchemes": {
+        "Bearer Authentication": {
+          "type": "http",
+          "description": "JWT token for authentication",
+          "scheme": "bearer",
+          "bearerFormat": "JWT"
+        }
+      }
+    }
+  }
