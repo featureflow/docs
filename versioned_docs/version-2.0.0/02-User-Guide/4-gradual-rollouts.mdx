@@ -4,19 +4,28 @@ sidebar_label: Gradual Rollouts
 slug: /gradual-rollouts
 ---
 
+# Gradual Rollouts
 
-# Gradual rollouts
-You can rollout new features gradually using the variant split function. The variant split function uses your users unique identifier and assigns them to a variant based on the set percentage.
+Gradual rollouts let you release features to a percentage of users, reducing risk by incrementally increasing exposure. Users are consistently assigned to the same variant based on their unique identifier, ensuring a stable experience.
 
-1. Select the feature you wish to edit - In the feature detail view, click the 'Targeting' tab.
-2. Select 'split' from the default rule selection box
-![Set Targeting](/img/2-0/features-tagrteing-gradual-rollout.png)
-3. Select the percentage using the slider.
-If you have more than two variants then additional sliders will allow you to apportion a percentage to them
+## Setting Up a Gradual Rollout
 
-4. Click 'Save Targeting' to save
+1. Navigate to your feature and select the **Targeting** tab
+2. In the rule's variant selector, choose **Split**
+3. Use the slider to set the percentage for each variant
+4. Click **Save Targeting**
 
-Using Targeting rules you can create more advanced scenarios such as rollout to a particular split given some specific rules (such as a date, geographical region or user type).
+![Gradual Rollout](/img/2-0/features-tagrteing-gradual-rollout.png)
 
-#### What's next?
-learn how to target your features and variants to allow the full power of featureflow.
+If your feature has more than two variants, additional sliders will appear allowing you to distribute percentages across all variants.
+
+## Combining with Targeting Rules
+
+You can combine gradual rollouts with [targeting rules](/docs/targeting-features) to create advanced scenarios, such as:
+- Rolling out to 10% of users in a specific region
+- Gradually increasing exposure for premium tier users
+- Testing variants only for users who signed up after a certain date
+
+## Next Steps
+
+- [Targeting features](/docs/targeting-features) — control which users see which variants

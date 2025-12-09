@@ -1,48 +1,43 @@
 ---
 title: Managing Feature Variants
 sidebar_label: Managing Feature Variants
-slug: /managing-feature-variants
+slug: /manage-feature-variants
 ---
 
 # Managing Feature Variants
 
-Variants are a simple but powerful concept.
+Variants allow a feature to return different values beyond simple on/off states. Use variants for:
+- **Version testing** — e.g., `v1`, `v2`, `v3`
+- **A/B testing** — e.g., `control`, `variant-a`, `variant-b`
+- **Feature modes** — e.g., `normal`, `maintenance`, `advanced`
 
-A feature can have any number of variants. The most basic feature has two variants - 'off' and 'on'.
+## Adding Variants
 
-As you create new versions of your feature or wish to test variations against each other, you will create new variants.
-
-They may be improvements, alternatives for a/b testing or functions such as maintenance mode.
-
-1. Navigate to the features list in any project
-2. Click the feature name to open the feature detail view
-3. Select the 'Settings' tab
-4. Click 'Change Variants' button to show the variants if they are hidden
-4. Click 'Add Variant' to add a new variant
-
-* key: is the variant-unique key that your application will use to identify the variant
-* name: is a friendly name
-* description: is and additional description field
-
-4. Click 'Save Feature Settings' to save your changes.
+1. Navigate to your project and select a feature
+2. Select the **Settings** tab
+3. Click **Change Variants** to expand the variants section
+4. Click **Add Variant** to create a new variant
+5. Enter the variant details:
+   - **Key** — unique identifier used in your code (e.g., `variant-b`)
+   - **Name** — human-readable display name
+   - **Description** — optional details about this variant
+6. Click **Save Feature Settings**
 
 ![Manage feature variants](/img/2-0/features-edit-add-variant.png)
 
-Examples may be:
-* "v2" - To identify a particular version of a feature
-* "simple"/"advanced" - To identify different types of a feature
-* "normal"/"maintenance" - to identify different modes of operation for a feature
-
-Now that you have defined your variants you can target and set them in the 'update rules' dialog for the feature.
+Once you've defined your variants, you can assign them to users through [targeting rules](/docs/targeting-features) or [gradual rollouts](/docs/gradual-rollouts).
 
 :::caution
-#### Modifying variants changes the variant in all environments
+**Variants are shared across all environments**
 
-You should manage your variants carefully as they are applied across all environments. If a variant is removed any environment using that variant will fall back to the default variant. If the default variant is using a variant that is removed then if will fall back to the failover variant.
-Featureflow maintains sensible safeguards against modifying variants that are in use.
+Modifying or removing a variant affects all environments. If a variant in use is removed, the environment will fall back to the default variant. Featureflow provides safeguards to warn you before modifying variants that are currently in use.
 :::
-You can alternatively define your variants directly in your code. When you register a feature with a list of variants defined featureflow will make them available in the UI.
 
+## Defining Variants in Code
 
-#### What's Next?
-Want to tread lightly? You can roll out your features and variants gradually to a percentage of users using Gradual rollouts:
+You can also define variants directly in your application code. When you register a feature with predefined variants, Featureflow will automatically make them available in the dashboard.
+
+## Next Steps
+
+- [Gradual rollouts](/docs/gradual-rollouts) — release variants to a percentage of users
+- [Targeting features](/docs/targeting-features) — assign variants to specific users or segments

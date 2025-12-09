@@ -1,25 +1,27 @@
 ---
 title: Enable and Disable Features
 sidebar_label: Enable and Disable Features
-slug: /enable-features
+slug: /enable-disable-features
 ---
 
 # Enable and Disable Features
 
-Features have targeting rules which can be enabled or disabled in a given environment.
+Each feature can be independently enabled or disabled per environment, allowing you to control rollouts across development, staging, and production.
 
-By default a feature can be 'Off' or 'On' - this is a simple boolean feature. To enable and disable your feature:
+## Toggling a Feature
 
-Using the main menu, navigate to your desired project and feature
-
-Click the feature On/Off toggle agains the environment you wish to enable or diosable
-
-If it is a production environment, you will get a confirmation warning
+1. Navigate to your project and select the feature you want to control
+2. Click the **On/Off toggle** next to the environment you wish to change
+3. For production environments, you'll see a confirmation dialog to prevent accidental changes
 
 ![Toggle Feature](/img/2-0/feature-toggle-feature.png)
 
+When a feature is:
+- **On** — Targeting rules are evaluated and users receive their matched variant
+- **Off** — All users receive the "off" variant, regardless of targeting rules
 
-#### WHats Next?
-Lets get a bit more advanced and create some different feature variants...
+## Next Steps
 
-
+- [Manage feature variants](/docs/manage-feature-variants) to create more than just on/off states
+- [Set up gradual rollouts](/docs/gradual-rollouts) to release features incrementally
+- [Target features](/docs/targeting-features) to specific users or segments

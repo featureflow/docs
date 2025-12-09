@@ -1,43 +1,48 @@
 ---
-title: Javascript - 5 Minute test
-sidebar_label: Javascript - 5 Minute test
+title: JavaScript - 5 Minute Test
+sidebar_label: JavaScript - 5 Minute Test
 slug: /javascript-5minute
 ---
 
-This is the 5 minute test for the Javascript (client) SDK.
+# JavaScript - 5 Minute Test
 
-This will run you through trialling out the basics.
+Try Featureflow in your browser in under 5 minutes using CodePen — no installation required.
 
-Once you have tried this head to the quick start to implement it in your own project.
+## Prerequisites
 
-If you haven't signed up yet - [go and get an account now here](https://app.featureflow.io/)
+If you haven't already, [create a free Featureflow account](https://app.featureflow.io/).
 
-### 1. Go to the JsBin Example
+## 1. Open the CodePen Example
 
-   Open the JSBin example - [Featureflow JSBin five minute example](http://codepen.io/henryyoung/pen/xqEmMR)
+Open the [Featureflow CodePen example](https://codepen.io/featureflow/pen/RzxzzJ).
 
-### 2. Edit the ES6/Babel file
+## 2. Get Your API Key
 
-   In the ES6/Babel tab, set FF_KEY to your 'JS Client Environment Api Key' - this can be found under the 'Api Keys' link at the top of the features list in featureflow.
+Navigate to your project page and find the **Environments** section. Click the key icon next to your environment to view the API keys:
+
+![Project Environments](/img/2-0/project-environments.png)
+
+Copy the **Client SDK API Key** (starts with `sdk-js-env-`):
+
+![API Keys Modal](/img/2-0/project-environments-api-key.png)
+
+In the CodePen, update the `FF_KEY` variable with your key:
 
 ```javascript
-const FF_KEY = '<environment key goes here>';
+const FF_KEY = 'sdk-js-env-YOUR_API_KEY';
 ```
-You can find the key on the settings panel of your environment page - it begins with 'js-env-'
 
-![SDK Key](/img/javascript-5minute-1.png)
+## 3. Test It
 
-### 3. Test
+1. Click **Run** in CodePen
+2. Open your Featureflow dashboard in another tab
+3. Toggle the `example-feature` on in your environment
+4. Refresh the CodePen — the output will change!
 
-   1. Click Run with JS in the top right corner
-   2. Open your featureflow account in a separate tab
-   3. Toggle the control in the environment features list
-   4. Note the output, refresh the page and note the output
-   
-__Congratulations!__ It's as simple as that. Now go forth and let this be the beginning of your continuous deployment dream! 
+**Congratulations!** You've seen Featureflow in action.
 
-Check the [user guide](/) for far more usages.
+## Next Steps
 
-## See More
-
-We have a complete example in codepen [here](https://codepen.io/featureflow/pen/RzxzzJ) add your JS SDK Key and have a play.
+- [Quick Start - Frontend](/docs/quick-start-frontend) — integrate into your own project
+- [Quick Start - Server](/docs/quick-start-server) — add server-side feature flags
+- [Targeting features](/docs/targeting-features) — control who sees what

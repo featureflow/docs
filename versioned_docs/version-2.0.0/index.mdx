@@ -7,44 +7,52 @@ slug: /
 
 # Overview
 
-Featureflow is a feature management tool that provides you best practice tools to enable feature management on both the server and client side of your application.
-
-It does this using a unique combination of client and server side SDKs combined with a simple and easy to use admin site.
+Featureflow is a feature management platform that helps you safely release, control, and test features in your applications. Use feature flags to separate deployment from release, run A/B tests, and progressively roll out new functionality.
 
 ## Key Concepts
-#### Organisation
-When you create your account you create an Organisation. The organisation is the all-encompassing owner of your featureflow account.
 
-#### Project
-You may create multiple projects (based on your subscription) - you typically create a project for each functional application your organisation manages.
+### Organisation
 
-For example, your application may consist of a few backend services in java, some serverless functions and a react frontend. All of these related application components could be managed under one project.
+Your organisation is the top-level account that owns all projects, environments, and team members.
 
-#### Environment
-A project may have multiple environments. These correlate to your
-applications environments. In addition each developer has their own individual sandbox environment named 'local'. Each environment has its own set of environment keys for the server and client side SDKs
+### Project
 
-#### Features
-A feature is a manageable item within your project, your feature has a project-unique key and a set of configurations for each environment to determine what variant to display to which users.
+A project represents a single application or product. You might have a backend API, a web app, and a mobile app all managed under one project.
 
-#### Feature Controls
-A features individual environment configuration (the feature flag) is known as a feature control (or simply 'control'). Feature controls contain the rules and variants to show for a given environment.
+### Environment
 
-#### Variants
-A feature control is evaluated to one of a number of variants. The default, and simplest form of control contains two variants - 'on' and 'off' indicating whether the feature should be on or off respectively. As you develop more complex scenarios, variants can indicate a number of states such as 'red', 'blue', '1.1', '1.2', 'live', 'maintenance'. Using this simple concept can enable a number of powerful features.
+Each project has multiple environments (e.g., Development, Staging, Production). Each environment has its own SDK keys and independent feature configurations, allowing you to test features before releasing to production.
 
-#### User
-When a control is evaluated you may pass in a user. A user has a unique id and a set of attributes that may be evaluated to determine the variant shown. User attributes may be any single or list of string, date or number and can be targeted by configuring the feature control rules in the featureflow UI
+### Feature
 
-## The Featureflow Architecture
-Featureflow's unique feature management platform provides feature configuration in through our globally distribute highly available real-time CDN.
+A feature is a flag you control through Featureflow. Each feature has a unique key used in your code and can be configured differently per environment.
 
-Our SDKs allow you to get started quickly both your server and web clients.
+### Feature Control
 
-Server SDKs receive feature rules from featuerflow - the SDKs will cache those rules and evaluate them as required when a feature is evaluated. This means your server evaluations are instant - often faster than going to your own database. Feature rule changes (such as turning a feature on and off) are pushed directly to the SDKs in the background.
+A feature control is the per-environment configuration for a feature — the rules and variants that determine what users see.
 
-Client SDKs call featureflow directly to evaluate features. We do not want to send all feature rules to a web client, thus the javascript clients ask featureflow to evaluate a feature. This is performed through our Highly Available Global CDN.
+### Variant
 
-Both clients send intermittent events to featureflow so that we can display feature usage and statuses in the dashboard.
+When a feature is evaluated, it returns a variant. The simplest features have two variants (`on` and `off`), but you can define any number of variants for more complex scenarios like A/B testing (`control`, `variant-a`, `variant-b`) or versioning (`v1`, `v2`).
+
+### User
+
+When evaluating a feature, you pass a user object with a unique ID and attributes (e.g., `tier`, `country`, `signup_date`). These attributes power [targeting rules](/docs/targeting-features) to control which users see which variants.
+
+## Architecture
+
+Featureflow delivers feature configurations through a globally distributed, highly available CDN.
 
 ![Featureflow Architecture](/img/featureflow-architetutre.png)
+
+### Server SDKs
+
+Server SDKs download and cache feature rules locally. Evaluations happen instantly in-memory — often faster than a database lookup. Rule changes are pushed to SDKs in real-time.
+
+### Client SDKs
+
+Client SDKs (JavaScript, React, mobile) call Featureflow's CDN to evaluate features. This keeps your client bundles small and ensures users always get the latest configuration.
+
+### Events
+
+Both server and client SDKs send usage events to Featureflow, powering the analytics dashboard to show feature status and usage across your application.

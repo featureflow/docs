@@ -1,120 +1,80 @@
 ---
-title: NodeJS - 5 Minute test
-sidebar_label: NodeJS - 5 Minute test
+title: Node.js - 5 Minute Test
+sidebar_label: Node.js - 5 Minute Test
 slug: /nodejs-5minute
 ---
-## Want to test us out? Let's do the 5 minute test:
 
-Ok, want to test us out in (less than) 5 minutes? Lets have a go!
+# Node.js - 5 Minute Test
 
-Firstly, If you haven't signed up yet you can [go and get a free account here](https://app.featureflow.io/)
+Get Featureflow running in your Node.js application in under 5 minutes.
 
-Once signed up, we give you a default project with a test and production environment plus one example feature.
+## Prerequisites
 
-Now your ready to go...
+If you haven't already, [create a free Featureflow account](https://app.featureflow.io/). New accounts include a default project with test and production environments, plus an example feature.
 
-1. Clone the github repo from here:
+## 1. Clone the Example Project
 
 ```bash
 git clone https://github.com/featureflow/featureflow-fiveminute-node
 cd featureflow-fiveminute-node
 npm install
 ```
-2. Set your environment api Key
 
-Edit './helloworld.js'
+## 2. Add Your API Key
 
-Add your server environment API key.
-
-Replace `{{YOUR_SERVER_ENVIRONMENT_API_KEY_HERE}}` with the Server Environment SDK Key: which can be retrieved under the 'API Keys' Link on the top right of your environment page.
-
-This is your unique key - used to identify the server when you call to get your features.
-
-The code will look like this:
+Edit `helloworld.js` and replace the placeholder with your **Server Environment API Key**. You can find this under the API Keys link on your [project page](/docs/projects-and-environments).
 
 ```javascript
-var featureflow = new Featureflow.Client({apiKey: 'srv-env-23456abc...'});
+const featureflow = new Featureflow.Client({ apiKey: 'srv-env-YOUR_API_KEY' });
 
-featureflow.ready(function(){
+featureflow.ready(function() {
     if (featureflow.evaluate('example-feature').isOn()) {
         console.log('The variant is on!');
-    }
-    else {
+    } else {
         console.log('The variant is not on!');
     }
-    //featureflow is now initialized in this block
 });
 ```
 
-3. Evaluate a feature
-
-We will now evaluate a feature - to do this we need to set the feature key in the evaluate call. You can get the feature key from the features list in featureflow (in brackets) next to the name.
-If you have just created a new account you can use the 'example-feature' that we have created for you.
-
-![Fedatures List](/img/quickstart-nodejs-1.png)
-
-In 'helloworld.js' you will see an example of a feature evaluation:
-
-```javascript
-if (featureflow.evaluate('example-feature').isOn()){
-  console.log('The variant is on!');
-}
-else{
-  console.log('The variant is not on!');
-}
-```
-
-:::note
-In the above code we are evaluating the feature _'example-feature'_.
-
-The first parameter we pass in is the key to identify the feature.
-
-You can specify featureflow to startup with features defined in code.
-
-Featureflow holds a local cache of all feature rules however in the event that the key cannot be found or some other error occurs then we will always fall back to failover value specified in your features passed in your config object, or if not specified it will default to 'off'.
-:::
-
-4. Run the program
-
-Now, run the program and observe the output
-
-You can run it using the node command below, or running the file using your favourite IDE.
+## 3. Run the Program
 
 ```bash
 node helloworld.js
 ```
 
-If all runs well, and assuming you have setup you should get the following output.
+With the default configuration, you should see:
 
-```bash
+```
 The variant is not on!
 ```
-5. Update your feature
 
-In featureflow, toggle your feature on in your environment, run the program again and observe the output.
+## 4. Toggle the Feature
+
+In the Featureflow dashboard, enable the `example-feature` in your environment:
+
+![Feature Targeting](/img/2-0/feature-targeting.png)
+
+Run the program again:
 
 ```bash
+node helloworld.js
+```
+
+Now you should see:
+
+```
 The variant is on!
 ```
 
-6. __Complete!__ 
+**Congratulations!** You've successfully integrated Featureflow.
 
-You have simply and successfully enabled a very powerful way to manage and release your features.
-
-Congratulations! That was easy hey?
-
-:::note
-*** Ensure FeatureflowClient is a singleton!
-
-NB: In a real world server you must ensure the Featureflow Client is a Singleton.
-
-Featureflow pulls feature configurations on startup and optimises evaluations by caching those feature rules and only updating when necessary.
-
-Check the https://github.com/featureflow/featureflow-node-example for an example using express.
+:::important
+**The Featureflow client must be a singleton.** In production applications, create the client once at startup. See the [Express example](https://github.com/featureflow/featureflow-node-example) for a real-world implementation.
 :::
 
-Now have a look at _helloworldWithUser.js_ to get and idea of how you can target your features to specific audiences.
+## Next Steps
 
-or you might want to try the same [5 minute test](https://docs.featureflow.io/docs/featureflow-five-minute-javascript) in the javascript API so you can get end to end and beautifully synchronised management
-
-or go a bit further and learn about [gradual rollouts](/gradual-rollouts), [variants](/managing-feature-variants) and [targeting features](/targeting-features).
+- Explore `helloworldWithUser.js` to learn about [targeting features](/docs/targeting-features) to specific users
+- [Quick Start - Frontend](/docs/quick-start-frontend) — add feature flags to your web app
+- [Gradual rollouts](/docs/gradual-rollouts) — release to a percentage of users
+- [Managing variants](/docs/manage-feature-variants) — beyond on/off

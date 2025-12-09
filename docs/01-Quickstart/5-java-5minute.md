@@ -1,89 +1,82 @@
 ---
-title: Java 5 Minute test
-sidebar_label: Java 5 Minute test
+title: Java - 5 Minute Test
+sidebar_label: Java - 5 Minute Test
 slug: /java-5minute
 ---
 
-## Want to try us out? Let's do the 5 minute test:
+# Java - 5 Minute Test
 
-[Firstly, If you haven't signed up yet you go and get a free account here](https://app.featureflow.io/)
+Get Featureflow running in your Java application in under 5 minutes.
 
-Once signed up, we give you a default project with a test and production environment plus one example feature.
+## Prerequisites
 
-Now your ready to go.
+If you haven't already, [create a free Featureflow account](https://app.featureflow.io/). New accounts include a default project with test and production environments, plus an example feature.
 
-### 1. Clone - Clone the github repo from here:
+## 1. Clone the Example Project
 
 ```bash
 git clone https://github.com/featureflow/featureflow-fiveminute-java.git
+cd featureflow-fiveminute-java
 ```
 
-### 2. Set your environment api Key
+## 2. Add Your API Key
 
-Edit _'HelloWorld.java'_ to add your server environment API key.
+Edit `HelloWorld.java` and replace the placeholder with your **Server Environment API Key**.
 
-Replace `{{YOUR_SERVER_ENVIRONMENT_API_KEY_HERE}}` with the key which can be retrieved under the 'API Keys' Link on the top right of your environment page.
+On your project page, find the **Environments** section and click the key icon next to your environment:
 
-This is your unique key - used to identify the server when you call to get your features.
+![Project Environments](/img/2-0/project-environments.png)
 
-![Server Api Key](/img/java-5minute-1.png)
+Copy the **Server SDK API Key** (starts with `sdk-srv-env-`):
+
+![API Keys Modal](/img/2-0/project-environments-api-key.png)
+
+Update the code:
 
 ```java
-FeatureFlowClient client = new FeatureFlowClient.Builder("{{YOUR_SERVER_ENVIRONMENT_API_KEY_HERE}}")
+FeatureFlowClient client = new FeatureFlowClient.Builder("srv-env-YOUR_API_KEY")
 ```
 
-### 3. Evaluate a feature
-We will now evaluate a feature - to do this we need to set the feature key in the evaluate call. You can get the feature key from the features list in featureflow (in brackets) next to the name.
+## 3. Get the Feature Key
 
-If you have just created a new account you can use the 'example-feature' that we have created for you. We have already added an example of evaluating the 'example-feature' in the code
+The example uses `example-feature`. You can find feature keys in the **Features** section of your project:
 
-![Feature Key](/img/java-5minute-2.png)
+![Features List](/img/2-0/project-features.png)
 
-```java
-if (client.evaluate(MyFeatures.EXAMPLE_FEATURE.getValue()).isOn()) {
-```
+The feature key is shown in the **KEY** column (e.g., `my-new-feature`, `example-feature`).
 
-### 4. Run the program
-
-Now, run the program and observe the output
-
-You can run it using the mvn command as below (or of course debug it in your favourite IDE).
+## 4. Build and Run
 
 ```bash
 ./mvnw clean compile assembly:single
-
 java -jar target/featureflow-fiveminute-java-1.0.0-SNAPSHOT-jar-with-dependencies.jar
 ```
 
-```bash
+With the default configuration, you should see:
+
+```
 The variant is not on!
 ```
 
-### 5. Update your feature
+## 5. Toggle the Feature
 
-In featureflow, toggle your feature on in your environment and observe the output.
+In the Featureflow dashboard, enable the `example-feature` in your environment. The application will receive the update in real-time:
 
-```bash
+```
 Received a control update event: example-feature variant: on
 ```
 
-### 6. Complete! 
+**Congratulations!** You've successfully integrated Featureflow.
 
-You have simply and successfully enabled a very powerful way to manage and release your features.
+---
 
-__Congratulations!__ That was easy hey?
+## Going Further: User Targeting
 
-So what can I do with this? Have a look at our [Developer use cases](http://www.featureflow.io/)
+Want to target features to specific users? Try the `HelloWorldWithUser` example.
 
-or continue below to try adding some user information to your evaluation.
+### 1. Update the Main Class
 
-## The ten minute test
-
-Now have a look at _HelloWorldWithUser_ to get and idea of how you can actively register, target and manage your features.
-
-1. Update HelloWorldWithUser.java and add your server API key as before.
-
-2. Update pom.xml to call _HelloWorldWithUser_ as the main class
+Edit `pom.xml` to use `HelloWorldWithUser`:
 
 ```xml
 <plugin>
@@ -101,76 +94,50 @@ Now have a look at _HelloWorldWithUser_ to get and idea of how you can actively 
 </plugin>
 ```
 
-3. In HelloWorldWithUser we provide a user (in the 'getUser()' method) - the user contains information about which is used to evaluate which variant of a feature matches. We have also added another feature 'new-feature'.
+### 2. Add Your API Key
 
-4. Rebuild and run
+Update `HelloWorldWithUser.java` with your Server API Key.
+
+### 3. Build and Run
 
 ```bash
 ./mvnw clean compile assembly:single
-
 java -jar target/featureflow-fiveminute-java-1.0.0-SNAPSHOT-jar-with-dependencies.jar
 ```
 
+The `new-feature` will be automatically registered in Featureflow.
 
-Note that the new feature 'new-feature' will be automatically registered and added to your features list in the featureflow admin console, to create a feature in featureflow you only need create it in code. If you create it in the console first however it will be linked via the key.
+### 4. Create a Targeting Rule
 
-5. Now lets add a rule to target the feature. In featureflow,
+In Featureflow:
+1. Click **Update Rules** for `example-feature`
+2. Click **Add Rule**
+3. Set: IF `user_role` equals `admin` → show variant `on`
+4. Set the default (ELSE) to variant `off`
 
-* click the 'Update Rules' button for 'example-feature' 
-* click the 'Add Rule' button 
-* add a rule which says IF 'user_role' is equal to 'admin' then show variant 'on' ELSE Default to variant 'off'
+![Feature Targeting](/img/2-0/feature-targeting.png)
 
-![Feature Rule](/img/java-5minute-3.png)
+Since the example user has an `admin` role, the feature will be enabled. Change the role to `standard_user` in the code and rerun — the feature will be disabled.
 
-6. Rerun your application. We know the user has an 'admin' role (as its set in our user in code) - you will find that example-feature is on. Only admins will see this feature, everyone else will see the off variant.
+### 5. Add Custom Variants
 
-7. Lets change the user to be a 'standard_user' - edit your code as such:
+You can add more variants beyond `on`/`off`:
+
+1. Click the feature name to edit settings
+2. Click **Add Variant** and create an `enhanced` variant
+3. Update rules to show `enhanced` to `pvt_tester` users
 
 ```java
 FeatureflowUser user = new FeatureflowUser("flo@example.com")
-                .withAttribute("age", 32)
-                .withAttribute("signup_date", new DateTime(2017, 1, 1, 12, 0, 0, 0))
-                .withStringAttributes("user_role", Arrays.asList("standard_user"))
-                .withAttribute("tier", "gold")
+    .withAttribute("age", 32)
+    .withAttribute("signup_date", new DateTime(2017, 1, 1, 12, 0, 0, 0))
+    .withStringAttributes("user_role", Arrays.asList("pvt_tester"))
+    .withAttribute("tier", "gold");
 ```
 
-8. Recompile and rerun the code and you will find that the example-feature is 'off' - we did not match the admin rule and so the 'standard_user' gets the 'off' variant.
+## Next Steps
 
-#### Add some variants
-Ok lets keep going, say you have a new version of your feature - it may be an improvement or a version you want to show only to particular users - you can define it as a new 'variant'
-
-9. Click the 'Example Feature' title to edit the feature
-10. Click 'Add variant' and name it 'Enhanced' with a key of 'enhanced' - this is our new version of the feature. Click 'update feature' to save.
-
-![Feature Variants](/img/java-5minute-4.png)
-
-11. Click 'Update rules' for example feature. Set the rule to say:
-    _'If user_role is equal to 'pvt_tester' then show variant 'Enhanced' ELSE default to variant on_
-
-![Feature Rules](/img/java-5minute-5.png)
-
-You have just set up a simple production test scenario. Your 'pvt_tester' role will see the new version whilst all other users will see the standard 'on' version.
-
-12. Now you have the idea, try changing your 'user_role' in the code to 'pvt_tester' and see the resulting variant.
-
-```java
-private static FeatureflowUser getUser(){
-        FeatureflowUser user = new FeatureflowUser("flo@example.com")
-                .withAttribute("age", 32)
-                .withAttribute(("signup_date", new DateTime(2017, 1, 1, 12, 0, 0, 0))
-                .withStringAttributes("user_role", Arrays.asList("pvt_tester"))
-                .withAttribute("tier", "gold");
-        return user;
-    }
-```
-
-![Evaluation Outpu](/img/java-5minute-6.png)
-
-We could go on, but I think our ten minutes are up.
-
-You may wish to go a further and learn about [gradual rollouts](/gradual-rollouts), more about [variants](/managing-feature-variants) and [feature targeting](/targeting-features).
-
-You may also want to try the same 5 minute test in the javascript API so you can get a synchronised front and back-end.
-
-Happy toggling!`
-
+- [Gradual rollouts](/docs/gradual-rollouts) — release to a percentage of users
+- [Managing variants](/docs/manage-feature-variants) — create custom feature states
+- [Targeting features](/docs/targeting-features) — control who sees what
+- [Quick Start - Frontend](/docs/quick-start-frontend) — add client-side feature flags

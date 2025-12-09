@@ -5,26 +5,36 @@ slug: /create-features
 ---
 
 # Create Features
-This page describes how to create a feature in the featureflow dashboard
 
-Within the [projects page](https://beta.featureflow-staging.com/projects/proj1), click the "+ New Feature" button
+To create a new feature flag, navigate to your project and click the **+ New Feature** button.
 
 ![New Feature Button](/img/2-0/feature-new-feature-button.png)
 
-Enter a unique key, name and description.
+## Feature Details
 
-The unique key is used to identify the feature in your application and cannot be changed once it is set. It should be a single word with no special characters- we suggest lower-case-hyphenated.
+Enter the following information:
+
+- **Key** — A unique identifier for the feature (e.g., `new-checkout-flow`). This is used in your code and cannot be changed after creation. Use lowercase letters with hyphens.
+- **Name** — A human-readable name for the feature.
+- **Description** — Optional details about what this feature does.
 
 ![New Feature Modal](/img/2-0/feature-create-new-modal.png)
 
-The default, and most basic, setup has two variants. 'off' and 'on'. When the feature is enabled then all users will see the 'on' variant. When the feature is disabled then all users will see the 'off' variant.
+## Variants
 
-You can modify and change the variants, as you develop more advanced scenarios and additional feature variants you may come back and modify these to suit.
+By default, features are created with two variants:
+- **off** — Returned when the feature is disabled
+- **on** — Returned when the feature is enabled
+
+You can customise these variants or add more to support advanced use cases like A/B testing or multi-variate features.
 
 ![Modify Variants](/img/2-0/feature-create-new-modal-variants.png)
 
-Click Save. Your feature has been created.
+Click **Save** to create your feature.
 
-#### What's next?
-Now you'll want to go and enable and disable your feature in your environments
+## Next Steps
+
+- [Enable and disable features](/docs/enable-disable-features) in your environments
+- [Manage feature variants](/docs/manage-feature-variants) for more complex scenarios
+- [Target features](/docs/targeting-features) to specific users or segments
 
