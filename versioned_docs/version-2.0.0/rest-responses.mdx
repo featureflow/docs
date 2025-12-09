@@ -1,0 +1,219 @@
+---
+id: rest-responses
+title: REST API Responses
+sidebar_label: REST API Responses
+description: Documentation for Featureflow REST API response formats and examples
+---
+
+# REST API Responses
+
+This page documents the response formats and examples for the Featureflow REST API.
+
+## Overview
+
+The Featureflow REST API returns responses in JSON format with consistent structure across all endpoints.
+
+## Response Format
+
+All API responses follow this general structure:
+
+```json
+{
+  "success": true,
+  "data": {
+    // Response data here
+  },
+  "message": "Optional message",
+  "timestamp": "2024-01-01T00:00:00Z"
+}
+```
+
+## Common Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `success` | boolean | Indicates if the request was successful |
+| `data` | object | The main response data |
+| `message` | string | Optional message providing additional context |
+| `timestamp` | string | ISO 8601 timestamp of the response |
+
+
+## Examples
+
+### Successful Feature Response
+
+```json
+{
+  "success": true,
+  "data": {
+    "key": "my-feature",
+    "name": "My Feature",
+    "description": "A sample feature flag",
+    "enabled": true,
+    "variants": [
+      {
+        "key": "on",
+        "name": "Enabled",
+        "weight": 100
+      },
+      {
+        "key": "off", 
+        "name": "Disabled",
+        "weight": 0
+      }
+    ]
+  },
+  "timestamp": "2024-01-01T00:00:00Z"
+}
+```
+
+### Error Response Example
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "FEATURE_NOT_FOUND",
+    "message": "Feature with key 'non-existent-feature' not found",
+    "details": "The requested feature does not exist in the current environment"
+  },
+  "timestamp": "2024-01-01T00:00:00Z"
+}
+```
+
+## HTTP Status Codes
+
+The API uses standard HTTP status codes:
+
+- `200 OK` - Request successful
+- `201 Created` - Resource created successfully
+- `400 Bad Request` - Invalid request parameters
+- `401 Unauthorized` - Authentication required
+- `403 Forbidden` - Insufficient permissions
+- `404 Not Found` - Resource not found
+- `500 Internal Server Error` - Server error
+
+## Rate Limiting
+
+API responses include rate limiting headers:
+
+- `X-RateLimit-Limit` - Request limit per time window
+- `X-RateLimit-Remaining` - Remaining requests in current window
+- `X-RateLimit-Reset` - Time when the rate limit resets
+
+When rate limited, you'll receive a `429 Too Many Requests` status code.
+
+# Featureflow API Error Responses
+
+This document describes the standard error response formats used by the Featureflow API. All error responses follow the [RFC 7807](https://tools.ietf.org/html/rfc7807) Problem Details for HTTP APIs specification.
+
+## Error Response Format
+
+All API errors return:
+
+- An appropriate HTTP status code
+- Content-Type: `application/problem+json`
+- A JSON body with detailed error information
+
+### Standard Error Response Body
+
+```json
+{
+  "type": "http://docs.featureflow.io/docs/rest-responses#section-specific-error",
+  "title": "Human-readable error summary",
+  "status": 400,
+  "error": "Bad Request",
+  "message": "Detailed error message",
+  "timestamp": "2025-06-28T10:15:30.123Z",
+  "errorCode": "error.specific_error_code",
+  "entityName": "affected_entity",
+  "path": "/api/v1/resource"
+}
+```
+
+## Error Response Types
+
+### Constraint Violation
+
+Returned when a request violates data constraints, such as validation rules for fields.
+
+**HTTP Status**: 400 Bad Request
+
+**Example Response**:
+
+```json
+{
+  "type": "http://docs.featureflow.io/docs/rest-responses#section-constraint-violation",
+  "title": "Constraint Violation",
+  "status": 400,
+  "error": "Bad Request",
+  "message": "Field validation failed",
+  "timestamp": "2025-06-28T10:15:30.123Z",
+  "errorCode": "error.validation",
+  "entityName": "feature",
+  "fieldErrors": [
+    {
+      "field": "name",
+      "message": "Feature name cannot be empty"
+    },
+    {
+      "field": "key",
+      "message": "Feature key must contain only alphanumeric characters and hyphens"
+    }
+  ],
+  "path": "/api/v1/features"
+}
+```
+
+### API Key Not Found
+
+Returned when an operation is attempted with an invalid, expired, or missing API key.
+
+**HTTP Status**: 401 Unauthorized
+
+**Example Response**:
+
+```json
+{
+  "type": "http://docs.featureflow.io/docs/rest-responses#section-api-key-not-found",
+  "title": "API Key Not Found",
+  "status": 401,
+  "error": "Unauthorized",
+  "message": "The API key provided was not found or is invalid",
+  "timestamp": "2025-06-28T10:15:30.123Z",
+  "errorCode": "error.apiKeyNotFound",
+  "path": "/api/v1/features"
+}
+```
+
+### Other Problems
+
+This is a general error type for various issues that don't fall into more specific categories.
+
+**HTTP Status**: Varies depending on the issue
+
+**Example Response**:
+
+```json
+{
+  "type": "http://docs.featureflow.io/docs/rest-responses#section-other-problems",
+  "title": "Operation Failed",
+  "status": 500,
+  "error": "Internal Server Error",
+  "message": "An unexpected error occurred while processing your request",
+  "timestamp": "2025-06-28T10:15:30.123Z",
+  "errorCode": "error.unexpectedError",
+  "path": "/api/v1/features"
+}
+```
+
+## Common Error Types
+
+The API may return other specific error types including:
+
+- **Invalid Password**: When a provided password doesn't meet security requirements
+- **Email Already Used**: When attempting to register with an email address that's already in use
+- **Login Already Used**: When attempting to register with a username that's already in use
+- **Email Not Found**: When a specified email address doesn't exist in the system
+
+Each of these errors will include specific guidance on how to resolve the issue. 

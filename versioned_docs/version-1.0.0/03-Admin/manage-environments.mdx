@@ -1,0 +1,26 @@
+---
+title: Manage Environments
+description: Administer environments
+sidebar_label: Environments
+slug: environments
+---
+
+# Manage Environments
+
+Within your project you create environments. Environments will map directly you your projects environments such as 'Development', 'Test', 'Production'.
+
+When you create a feature we create a default control for each environment. You can then manage the feature for each environment.
+
+Each user gets their own special sandbox 'local' environment - this has its own unique keys and settings and allows developers to develop without affecting others.
+
+Select Account > Admin > Projects (Tab) > Your Project (Tab) to navigate to your desired project.
+
+![Manage Environments](/img/admin-environments-1.png)
+
+From here you can create a New environment, update environments and delete environments. Note you must have at least 1 environment for a project.
+
+:::note
+❗️Deleting Environments
+
+Delete an environment with extreme caution! Deleting an environment will remove feature configuration for that environment and remove the environment API Keys. This will cause your SDKs to fail - any applications using that environment will fall back to the failover rules defined in the application code. This is NOT reversible.
+:::

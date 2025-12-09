@@ -1,0 +1,56 @@
+---
+title: Targeting features
+sidebar_label: Targeting features
+slug: /targeting-features
+---
+
+# Targeting features
+Featureflow has a unique and powerful approach to targeting your features. You can target your feature variants to any target that you can pass in from your app.
+
+When you make calls to evaluate a feature you pass in a 'user' - this user contains a unique id which should uniquely identify your user and any number of attributes pairs that identify the current user.
+
+#### The Default Rule
+The default rule is the catch-all if the feature is enabled any other rules do not match. There will always be a default rule.
+If there are no other rules then All users go to the variant or variant split defined in the default rule:
+
+![Default Rule](/img/targeting-1-default.png)
+
+#### Creating a rule
+Click the 'Add Rule' button. a new rule panel will appear and the default rule will drop below to become the final 'Else' rule. Note each rule is evaluated in order with the topmost rule being evaluated first.
+
+Here you can select the target. The targets are derived from the available user information provided in the user from your application evaluation calls.
+
+Now select a comparator - the available list depends on the target data type (number, text or date).
+
+![Default Rule](/img/targeting-2-creating.png)
+
+You can use the '+' and '-' buttons on the right to create additional target rules then finally select the variant or variant split for the rule set.
+
+Within one ruleset the rules are AND evaluated. All rules must pass for the variant to be returned.
+
+![Default Rule](/img/targeting-3-dates.png)
+
+![Default Rule](/img/targeting-4-split.png)
+
+#### Enabling targets and user values
+To ensure targets and values are available to be evaluated you must first define and pass the values back in the application evaluation code in the form of a featureflow user.
+
+Define a user in the following way:
+
+```js title="Javascript"
+        var user = {
+            id: 'userid1',
+            attributes: {
+                name: 'john',
+                tier: 'gold',
+                user_role: 'pvt_tester'
+            }
+        }
+```
+```java title="Java"
+    FeatureFlowUser user = new FeatureflowUser(user.getId())
+        .withAttribute("user_role", "pvt_tester")
+        .withAttribute("tier", "gold")
+        .withAttribute("tenure_years", 10)
+        .withAttribute("signup_date", new DateTime());"
+```

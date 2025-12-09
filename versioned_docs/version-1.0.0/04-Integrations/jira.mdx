@@ -1,0 +1,88 @@
+# Jira Integration
+
+📘 Integration for Jira Cloud
+
+
+:::note
+This integration is for jira cloud only.
+:::
+
+With Featureflow's first-class Jira Cloud integration, you can create, link and view the status of all of your feature flags directly from Jira. You'll also be able to link your jira tasks to your features directly from Featureflow.
+
+## Installation
+Installation is simple:
+Grab the featureflow integration from the Atlassian Marketplace
+
+Once installed, click 'Get started'
+
+![Jira Integration](/img/integrations-jira-1.png)
+
+Enter the domain of your featureflow site and click 'connect'
+
+![Jira Integration](/img/integrations-jira-2.png)
+
+Your jira integration is complete.
+
+![Jira Integration](/img/integrations-jira-3.png)
+
+## Create a new feature from Jira
+In the 'releases' section of your jira ticket, click '+ Add feature flag' > 'Create feature flag'.
+
+![Jira Integration](/img/integrations-jira-4.png)
+
+Select the project in which to create the feature, give the feature a name and a key. The jira key will be pre-populated in the 'Jira' field.
+
+Click 'Create feature'
+
+![Jira Integration](/img/integrations-jira-5.png)
+
+Linked Jira tickets are displayed just below the feature title. You can now view and link back to related jira tickets from your featureflow feature.
+
+![Jira Integration](/img/integrations-jira-6.png)
+
+## Link an existing feature from Jira
+
+In the 'releases' section of your jira ticket, click '+ Add feature flag' > 'Connect feature flag'.
+
+![Jira Integration](/img/integrations-jira-71.png)
+
+Choose the desired project and search for an existing feature flag.
+
+Click 'Link feature'
+
+![Jira Integration](/img/integrations-jira-7.png)
+
+When a feature is linked to your jira ticket, you will see the jira key in the feature detail view.
+
+![Jira Integration](/img/integrations-jira-8.png)
+
+## Link an existing Jira ticket from Featureflow
+
+When you have Jira integration enabled you will have a 'Jira Issues' field visible in the edit view.
+The Jira issue must exist before you link from featureflow.
+
+Enter a list of Jira Issue keys to associate them with your feature.
+
+Removing issue keys will remove the association.
+
+![Jira Integration](/img/integrations-jira-9.png)
+
+## View your features in Jira
+Jira shows a view of all associated feature flags under the 'RELEASES' section in the right hand column.
+The summary status is either the status of your current production environment flag or the first environment if none are marked as production.
+
+![Jira Integration](/img/integrations-jira-10.png)
+
+Clicking the link will show a summary of all related flags in each environment
+
+![Jira Integration](/img/integrations-jira-11.png)
+
+Hovering over the Rollout details will display a textual representation of the rollout rules
+
+![Jira Integration](/img/integrations-jira-12.png)
+
+## Remove the integration
+To remove the integration, in featureflow, navigate to 'Admin > Integrations' and click the trash can icon next to the integration. All links will be removed and the integration will be de-linked.
+You may then wish to delete the integration plugin in jira, or re-connect at any time.
+
+![Jira Integration](/img/integrations-jira-13.png)

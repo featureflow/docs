@@ -73,6 +73,10 @@ const config = {
             label: 'Quick Start',
           },*/
           {
+            type: 'docsVersionDropdown',
+            position: 'right',
+          },
+          {
             href: 'https://github.com/featureflow',
             label: 'GitHub',
             position: 'right',

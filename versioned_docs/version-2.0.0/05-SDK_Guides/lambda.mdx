@@ -1,0 +1,293 @@
+---
+title: Using Featureflow with AWS Lambda
+sidebar_label: AWS Lambda
+slug: /using-featureflow-with-aws-lambda
+---
+
+## Overview
+This guide demonstrates using featureflow in an AWS Lambda serverless function.
+
+## Prerequisites
+
+#### You will need:
+
+* A featureflow account - If you don't have one already, Get your Featureflow account at [featureflow.io](http://www.featureflow.io)
+* An AWS Account
+* For this example, we will use the serverless framework as a simplified way to deploy the function to AWS
+* The example code from [github](https://github.com/featureflow/featureflow-lambda-edge-example)
+
+See [serverless.com](https://serverless.com) to install the serverless command line
+
+Clone the Github example code: https://github.com/featureflow/featureflow-lambda-edge-example
+
+## Create the lambda
+
+Clone the example code at https://github.com/featureflow/featureflow-lambda-edge-example
+
+Let's have a look at the lambda code.
+
+Firstly, you __must__ instantiate featureflow __outside__ of the handler function.
+
+:::caution Instantiating the featureflow client outside of the lambda handler function
+
+It is imperative that you Instantiate the featureflow client __outside__ of the handler function! Featureflow will run as a singleton for the life of the lambda.
+
+When instantiated, featureflow will get the latest feature rules, optimally cache your features while the lambda is hot and update configuration automatically if feature flag values change.
+
+Instantiating the client inside the handler would cause performance issues and excessive requests as feature rules would get loaded for each handler invocation.
+
+:::
+
+So the first lines of this function are simply to require the nodejs library and to instantiate featureflow.
+
+Replace `sdk-srv-env-YOUR-KEY` with the Server SDK key from your associated featureflow environment.
+
+```javascript
+'use strict';
+var Featureflow = require('featureflow-node-sdk');
+
+var featureflow = new Featureflow.Client({apiKey: 'sdk-srv-env-YOUR-KEY'});
+
+exports.handler = async (event) => {
+```
+
+![Copy the Server SDK Key](/img/featureflow-select-sdk-key.png "Select the Server Environment SDK Key")
+
+Next we create our handler and add the featureflow evaluation code.
+
+```javascript
+exports.handler = async (event) => {
+  const request = event.Records[0].cf.request;
+  const headers = request.headers;
+  const country = headers['cloudfront-viewer-country'] ? headers['cloudfront-viewer-country'][0].value : "US";
+  const cohort = headers['x-cohort'] ? headers['x-cohort'][0].value : "none";
+  console.log(`country: ${country} cohort: ${cohort}`);
+  let user = new Featureflow.UserBuilder("exampleuser@featureflow.io")
+      .withAttribute('country', country)
+      .withAttribute('cohort', cohort)
+      .withAttributes('role', ['USER_ADMIN', 'BETA_CUSTOMER'])
+      .build();
+  await featureflow.waitForReady();
+  let response;
+  const evaluated = featureflow.evaluate('lambda-redirect', user).value();
+  console.log(`Featureflow has evaluated: ${evaluated}`);
+  if (featureflow.evaluate('lambda-redirect', user).is("original")){
+    response = {
+      status: '302',
+      statusDescription: 'Found',
+      headers: {
+        location: [{
+          key: 'Location',
+          value: 'https://featureflow.io'
+        }],
+      },
+    };
+  }else if (featureflow.evaluate('lambda-redirect', user).is("new")){
+    response = {
+      status: '302',
+      statusDescription: 'Found',
+      headers: {
+        location: [{
+          key: 'Location',
+          value: 'https://featureflow.com'
+        }],
+      },
+    };
+  }else{
+    response = {
+      status: '302',
+      statusDescription: 'Found',
+      headers: {
+        location: [{
+          key: 'Location',
+          value: 'https://www.featureflow.io',
+        }],
+      },
+    };
+  }
+  return response;
+};
+```
+
+We've put a bit in here so let's unpack it:
+
+Firstly, we get some context. From the incoming request we grab one Lambda injected header and one custom header, `country` and `cohort`.
+
+We will use these values in our feature evaluations.
+
+```javascript
+  const country = headers['cloudfront-viewer-country'] ? headers['cloudfront-viewer-country'][0].value : "US";
+  const cohort = headers['x-cohort'] ? headers['x-cohort'][0].value : "none";
+```
+
+Then we create a featureflow user context object and set some example attributes, we have added country and cohort, plus an example of an array of roles which in a real implementations could be derived from your IAM:
+
+```javascript
+let user = new Featureflow.UserBuilder("exampleuser@featureflow.io")
+      .withAttribute('country', country)
+      .withAttribute('cohort', cohort)
+      .withAttributes('role', ['USER_ADMIN', 'BETA_CUSTOMER'])
+      .build();
+```
+
+We call the `await` function to ensure that featureflow is ready. This covers for the case of the very first lambda invocation, where the SDK may still be pulling feature configuration from featureflow.
+
+```
+await featureflow.waitForReady();
+```
+
+Then we evaluate the feature
+
+```javascript
+if (featureflow.evaluate('lambda-redirect', user).is("original")){
+    response = {
+      status: '302',
+      statusDescription: 'Found',
+      headers: {
+        location: [{
+          key: 'Location',
+          value: 'https://featureflow.io'
+        }],
+      },
+    };
+  }else if (featureflow.evaluate('lambda-redirect', user).is("new")){
+    response = {
+      status: '302',
+      statusDescription: 'Found',
+      headers: {
+        location: [{
+          key: 'Location',
+          value: 'https://featureflow.com'
+        }],
+      },
+    };
+  }else{
+    response = {
+      status: '302',
+      statusDescription: 'Found',
+      headers: {
+        location: [{
+          key: 'Location',
+          value: 'https://www.featureflow.io',
+        }],
+      },
+    };
+  }
+```
+
+Here we are checking a feature flag named `lambda-redirect` - given the outcome of the evaluation we redirect the user with a 302.
+
+## Deploy the lambda
+
+#### IAM Role for the lambda
+The lambda has a very basic IAM role set up that will be created by `serverless`. The role has access to write to CloudWatch logs, and it can be assumed by `lambda` and `edgelambda` services. For production, the logs should be more restrictive than the AWS managed `AWSLambdaBasicExecutionRole`.
+
+Set up a profile that has access to create cloudformation templates, access S3 etc. Please check the relevant [documentation of serverless](https://serverless.com/framework/docs/providers/aws/guide/credentials/).
+
+```bash
+serverless deploy
+```
+
+## Create the feature flag in featureflow
+
+Create a feature in the featureflow console with a matching key (in this example, `lambda-redirect`)
+
+Create two variants, `original` and `new` - we will use these to define the 302 redirects in the lambda
+
+![Featureflow Variants](/img/lambda-feature-settings.png "Define featureflow variants")
+
+Then you can target the variants using rules based on the user attributes obtained from the header and cookie values:
+
+![Featureflow Targeting](/img/lambda-feature-targeting.png "Define featureflow targeting rules")
+
+In the above example, we redirect if the `date` is after a certain date. Date is an attribute we get for free from the featureflow SDK and is the date that the request is made.
+
+We also target the `country` attribute, which we get from `cloudfront-viewer-country` header.
+
+## Test the lambda
+In the lambda view click 'test' and create an event, for example:
+
+```json
+{
+  "Records": [
+    {
+      "cf": {
+        "config": {
+          "distributionId": "EXAMPLE"
+        },
+        "request": {
+          "uri": "/",
+          "method": "GET",
+          "clientIp": "2001:cdba::3257:9652",
+          "headers": {
+            "cloudfront-viewer-country": [
+              {
+                "key": "UK",
+                "value": "UK"
+              }
+            ],
+            "x-cohort": [
+              {
+                "key": "beta",
+                "value": "beta"
+              }
+            ],
+            "user-agent": [
+              {
+                "key": "User-Agent",
+                "value": "Test Agent"
+              }
+            ],
+            "host": [
+              {
+                "key": "Host",
+                "value": "d123.cf.net"
+              }
+            ],
+            "cookie": [
+              {
+                "key": "Cookie",
+                "value": "SomeCookie=1; AnotherOne=A; X-Experiment-Name=B"
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}
+```
+
+Check the result and note the evaluated variant.
+
+![Featureflow Variants](/img/lambda-logs-original.png "Feature invocation original result logs")
+
+Try updating the targeting rules, for example, redirect all `US` requests to the `new` URL:
+
+![Featureflow Targeting US beta](/img/lambda-feature-targeting-us.png)
+
+![Featureflow Variants](/img/lambda-logs-new.png "Feature invocation new result logs")
+
+## Trigger from CloudFront
+
+On the AWS console for Lambda, find the function and click on _Deploy to Lambda@Edge_.
+
+On the next screen you will need to select which distribution you are deploying to and on which event, select `viewer request` event.
+
+Viewer request is evaluated _before_ the cache is hit, otherwise the cache would continue to return with the first evaluated variant.
+
+__Select 'Deploy to Lambda@Edge'__
+![Deploy first step](/img/lambda-deploy-1.png "Deploy first step")
+
+__Configure a basic trigger and click deploy__
+![Deploy second step](/img/lambda-deploy-2.png "Deploy second step")
+
+After the function is deployed make a request to the cloudfront url, you should be redirected to the failover endpoint.
+
+Note that the logs will be written to a region that is close to the CDN edge node that is serving you. For example even though the Lambda is in `us-east-1` it is now deployed throughout the distribution and if you are in France for example the logs of the edge function will be written to the Paris region.
+
+## Links
+
+Github repo: https://github.com/featureflow/featureflow-lambda-edge-example
+
+2-minute video guide: https://www.youtube.com/watch?v=VbcLbwJirGo
