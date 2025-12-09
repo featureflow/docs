@@ -1,0 +1,93 @@
+---
+title: Manage Projects and Environments
+description: Administer projects and Environments
+sidebar_label: Projects and Environments
+slug: projects-and-environments
+---
+
+# Admin Projects
+
+The Projects tab allows you to manage your projects and their environments. A project typically represents a single application, and each project can have multiple environments (e.g., Production, Test, Staging).
+
+![Admin Projects](/img/2-0/admin-projects.png)
+
+## Project Details
+
+The project view displays:
+- **Project Name** — the display name of the project
+- **Project Key** — a unique identifier used in URLs and API calls
+- **Created** — when the project was created
+- **Last Modified** — when the project was last updated
+- **Features** — the number of feature flags in the project
+
+Use the **Change** dropdown to switch between projects.
+
+## Creating a Project
+
+Click **+ New Project** to create a new project.
+
+![Create New Project](/img/2-0/admin-project-create-new-project.png)
+
+Enter a **Project Name** (display name) and a **Project Key** (unique identifier). The project key is used in URLs and API calls and cannot be changed after creation.
+
+## Updating a Project
+
+Click **Update Project** to rename the project.
+
+![Update Project](/img/2-0/admin-project-update-project.png)
+
+## Deleting a Project
+
+Click **Delete Project** to permanently remove a project. This action cannot be undone and will delete all associated environments and features.
+
+![Delete Project](/img/2-0/admin-project-delete-project.png)
+
+---
+
+## Environments
+
+Each project contains one or more environments. Environments allow you to manage feature flags separately across different stages of your application (e.g., development, staging, production).
+
+The environments table shows:
+- **Environment** — name and key
+- **URL** — optional URL where the environment is hosted
+- **Type** — Production or Development
+- **Created** — when the environment was created
+- **Actions** — view API keys, edit, or delete
+
+### Creating an Environment
+
+Click **+ New Environment** to add a new environment to your project.
+
+![Create New Environment](/img/2-0/admin-project-create-new-environment.png)
+
+Configure the following:
+- **Environment Name** — display name for the environment
+- **Environment Key** — unique identifier (alphanumeric, hyphens, and underscores only)
+- **Environment URL** — optional URL where this environment is deployed
+- **Environment Color** — choose a color to easily identify the environment
+- **Production Environment** — toggle on for production environments (may have additional restrictions)
+
+### Updating an Environment
+
+Click the edit icon in the Actions column to update an environment's settings.
+
+![Edit Environment](/img/2-0/admin-project-update-environment.png)
+
+### Viewing API Keys
+
+Click the key icon in the Actions column to view the API keys for an environment.
+
+![API Keys](/img/2-0/admin-project-environment-api-keys.png)
+
+Each environment has two API keys:
+- **Client SDK API Key** — use this key in client-side SDKs (JavaScript, React, mobile apps)
+- **Server SDK API Key** — use this key in server-side SDKs (Node.js, Java, Python, etc.)
+
+Click the copy button to copy a key to your clipboard.
+
+### Deleting an Environment
+
+Click the delete icon in the Actions column to remove an environment. This action cannot be undone and will permanently delete all environment data and configurations.
+
+![Delete Environment](/img/2-0/admin-project-delete-environment.png)
