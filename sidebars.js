@@ -25,9 +25,8 @@ const sidebars = {
           {
             type: 'link',
             label: 'Java SDK',
-            href: 'https://github.com/featureflow/featureflow-java-sdk', // The external URL
+            href: 'https://github.com/featureflow/featureflow-java-sdk',
           },
-
           {
             type: 'link',
             label: 'NodeJS SDK',
@@ -51,23 +50,6 @@ const sidebars = {
         ],
       },
   ],
-  sdkLinksSidebar: [
-
-
-  ]
-
-  // But you can create a sidebar manually
-  /*
-  tutorialSidebar: [
-    'intro',
-    'hello',
-    {
-      type: 'category',
-      label: 'Tutorial',
-      items: ['tutorial-basics/create-a-document'],
-    },
-  ],
-   */
 };
 
 module.exports = sidebars;

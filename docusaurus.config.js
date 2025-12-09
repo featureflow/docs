@@ -60,18 +60,11 @@ const config = {
           src: 'img/featureflow-logo.png',
         },
         items: [
-          /*{
-            type: 'doc',
-            docId: 'index',
-            position: 'left',
-            label: 'Docs',
-          },
           {
-            type: 'doc',
-            docId: 'quickstart/index',
+            href: 'https://beta.featureflow.io/api/swagger-ui/index.html',
+            label: 'API Reference',
             position: 'left',
-            label: 'Quick Start',
-          },*/
+          },
           {
             type: 'docsVersionDropdown',
             position: 'right',

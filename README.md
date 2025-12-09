@@ -1,37 +1,35 @@
-# Website
+# Featureflow Documentation
 
-This is the featureflow docs static site.
+This is the Featureflow docs static site at [docs.featureflow.io](https://docs.featureflow.io).
 
-This site contains all of the readme at docs.featuerflow.io
+Built using [Docusaurus](https://docusaurus.io/).
 
-This website is built using [Docusaurus 2](https://docusaurus.io/).
+## Installation
 
-### Installation
-
-```
-$ yarn
+```bash
+yarn
 ```
 
-### Local Development
+## Local Development
 
-```
-$ yarn start
-```
-
-This command starts a local development server and opens up a browser window. Most changes are reflected live without having to restart the server.
-
-### Build
-
-```
-$ yarn build
+```bash
+yarn start
 ```
 
-This command generates static content into the `build` directory and can be served using any static contents hosting service.
+Starts a local development server and opens a browser window. Most changes are reflected live without having to restart the server.
 
-### Deployment
+## Build
 
+```bash
+yarn build
 ```
-$ GIT_USER=<Your GitHub username> yarn deploy
+
+Generates static content into the `build` directory.
+
+## Deployment
+
+```bash
+GIT_USER=<Your GitHub username> yarn deploy
 ```
 
-Build the website and push to the `gh-pages` branch.
+Builds the website and pushes to the `gh-pages` branch.
