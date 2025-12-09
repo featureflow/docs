@@ -145,7 +145,7 @@ featureflowClient, err := featureflow.Client("srv-env-YOUR_API_KEY", featureflow
 </TabItem>
 </Tabs>
 
-Your **Server Environment API Key** is available on the [Projects](/docs/projects-and-environments) page in Featureflow.
+Your **Server Environment API Key** is available on the Projects page in Featureflow.
 
 ### Why Register Features?
 
@@ -262,7 +262,7 @@ if featureflowClient.Evaluate("example-feature", user).IsOn() {
 </TabItem>
 </Tabs>
 
-Pass a user object with attributes to enable [targeting rules](/docs/targeting-features). Without a user, evaluations are treated as anonymous.
+Pass a user object with attributes to enable [targeting rules](/targeting-features). Without a user, evaluations are treated as anonymous.
 
 ## 4. Test Your Integration
 
@@ -288,7 +288,7 @@ The feature detail view shows the status across all environments with quick togg
 
 ## Next Steps
 
-- [Gradual rollouts](/docs/gradual-rollouts) — release to a percentage of users
-- [Targeting features](/docs/targeting-features) — control who sees what
-- [Managing variants](/docs/manage-feature-variants) — beyond on/off
-- [JavaScript SDK](/docs/javascript) — add feature flags to your frontend
+- [Gradual rollouts](/gradual-rollouts) — release to a percentage of users
+- [Targeting features](/targeting-features) — control who sees what
+- [Managing variants](/manage-feature-variants) — beyond on/off
+- [JavaScript SDK](/javascript-client) — add feature flags to your frontend

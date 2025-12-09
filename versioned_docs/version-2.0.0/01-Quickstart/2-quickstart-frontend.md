@@ -20,7 +20,7 @@ npm install --save featureflow-client
 
 ## 2. Get Your API Key
 
-Find your **Client SDK API Key** on the [Projects](/docs/projects-and-environments) page. Click the key icon next to your environment:
+Find your **Client SDK API Key** on the Projects page. Click the key icon next to your environment:
 
 ![Environment Key](/img/2-0/quickstart-fe-env-key.png)
 
@@ -44,7 +44,7 @@ const user = {
 const featureflow = Featureflow.init('<Client SDK API Key>', user);
 ```
 
-User attributes enable [targeting rules](/docs/targeting-features). If you don't have user information, omit the user parameter — Featureflow will use an anonymous ID.
+User attributes enable [targeting rules](/targeting-features). If you don't have user information, omit the user parameter — Featureflow will use an anonymous ID.
 
 ## 4. Evaluate Features
 
@@ -72,7 +72,7 @@ if (featureflow.evaluate('my-feature-key').is('variant-a')) {
 
 ## Next Steps
 
-- [Create features](/docs/create-features) in the dashboard
-- [Gradual rollouts](/docs/gradual-rollouts) — release to a percentage of users
-- [Targeting features](/docs/targeting-features) — control who sees what
-- [JavaScript SDK reference](/docs/javascript) — full API documentation
+- [Create features](/create-features) in the dashboard
+- [Gradual rollouts](/gradual-rollouts) — release to a percentage of users
+- [Targeting features](/targeting-features) — control who sees what
+- [JavaScript SDK reference](/javascript-client) — full API documentation

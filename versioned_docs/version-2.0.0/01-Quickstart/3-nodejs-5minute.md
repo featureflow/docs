@@ -22,7 +22,7 @@ npm install
 
 ## 2. Add Your API Key
 
-Edit `helloworld.js` and replace the placeholder with your **Server Environment API Key**. You can find this under the API Keys link on your [project page](/docs/projects-and-environments).
+Edit `helloworld.js` and replace the placeholder with your **Server Environment API Key**. You can find this under the API Keys link on your project page.
 
 ```javascript
 const featureflow = new Featureflow.Client({ apiKey: 'srv-env-YOUR_API_KEY' });
@@ -74,7 +74,7 @@ The variant is on!
 
 ## Next Steps
 
-- Explore `helloworldWithUser.js` to learn about [targeting features](/docs/targeting-features) to specific users
-- [Quick Start - Frontend](/docs/quick-start-frontend) — add feature flags to your web app
-- [Gradual rollouts](/docs/gradual-rollouts) — release to a percentage of users
-- [Managing variants](/docs/manage-feature-variants) — beyond on/off
+- Explore `helloworldWithUser.js` to learn about [targeting features](/targeting-features) to specific users
+- [Quick Start - Frontend](/quick-start-frontend) — add feature flags to your web app
+- [Gradual rollouts](/gradual-rollouts) — release to a percentage of users
+- [Managing variants](/manage-feature-variants) — beyond on/off

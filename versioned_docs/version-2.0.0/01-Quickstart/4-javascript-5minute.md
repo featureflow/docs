@@ -43,6 +43,6 @@ const FF_KEY = 'sdk-js-env-YOUR_API_KEY';
 
 ## Next Steps
 
-- [Quick Start - Frontend](/docs/quick-start-frontend) — integrate into your own project
-- [Quick Start - Server](/docs/quick-start-server) — add server-side feature flags
-- [Targeting features](/docs/targeting-features) — control who sees what
+- [Quick Start - Frontend](/quick-start-frontend) — integrate into your own project
+- [Quick Start - Server](/quick-start-server) — add server-side feature flags
+- [Targeting features](/targeting-features) — control who sees what

@@ -117,4 +117,4 @@ Now have a look at _helloworldWithUser.js_ to get and idea of how you can target
 
 or you might want to try the same [5 minute test](https://docs.featureflow.io/docs/featureflow-five-minute-javascript) in the javascript API so you can get end to end and beautifully synchronised management
 
-or go a bit further and learn about [gradual rollouts](/gradual-rollouts), [variants](/managing-feature-variants) and [targeting features](/targeting-features).
+or go a bit further and learn about [gradual rollouts](../02-User-Guide/4-gradual-rollouts.mdx), [variants](../02-User-Guide/3-manage-feature-variants.mdx) and [targeting features](../02-User-Guide/5-targeting-features.mdx).

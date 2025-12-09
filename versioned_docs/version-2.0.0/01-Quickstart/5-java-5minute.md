@@ -137,7 +137,7 @@ FeatureflowUser user = new FeatureflowUser("flo@example.com")
 
 ## Next Steps
 
-- [Gradual rollouts](/docs/gradual-rollouts) — release to a percentage of users
-- [Managing variants](/docs/manage-feature-variants) — create custom feature states
-- [Targeting features](/docs/targeting-features) — control who sees what
-- [Quick Start - Frontend](/docs/quick-start-frontend) — add client-side feature flags
+- [Gradual rollouts](/gradual-rollouts) — release to a percentage of users
+- [Managing variants](/manage-feature-variants) — create custom feature states
+- [Targeting features](/targeting-features) — control who sees what
+- [Quick Start - Frontend](/quick-start-frontend) — add client-side feature flags
