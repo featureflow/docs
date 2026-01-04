@@ -1,0 +1,198 @@
+---
+title: Java SDK
+sidebar_label: Java SDK
+slug: /java-sdk
+---
+
+Get your Featureflow account at [featureflow.io](http://www.featureflow.io)
+
+GitHub: https://github.com/featureflow/featureflow-java-sdk
+
+## Installation
+
+Add the dependency to your `pom.xml`:
+
+```xml
+<dependency>
+    <groupId>io.featureflow</groupId>
+    <artifactId>featureflow-java-sdk</artifactId>
+    <version>1.2.1</version>
+</dependency>
+```
+
+Or for Gradle, add to your `build.gradle`:
+
+```groovy
+implementation 'io.featureflow:featureflow-java-sdk:1.2.1'
+```
+
+## Quick Start
+
+### Create a Featureflow Client
+
+Get your **Server Environment API Key** from the environment page in Featureflow and instantiate a singleton client:
+
+```java
+String apiKey = "sdk-srv-env-YOUR_API_KEY";
+FeatureflowClient featureflow = FeatureflowClient.builder(apiKey).build();
+```
+
+:::caution Singleton Pattern
+The `FeatureflowClient` should be instantiated once and reused throughout your application. If using Spring, configure it as a `@Bean` in a `@Configuration` class.
+:::
+
+### Evaluate a Feature
+
+Check the value of a feature flag in your code:
+
+```java
+if (featureflow.evaluate("my-feature-key", user).isOn()) {
+    // Feature is enabled
+}
+
+if (featureflow.evaluate("my-feature-key", user).isOff()) {
+    // Feature is disabled
+}
+```
+
+For custom variants beyond `on`/`off`:
+
+```java
+if (featureflow.evaluate("my-feature-key", user).is("red")) {
+    System.out.println("Variant: " + featureflow.evaluate("my-feature-key", user).value());
+}
+```
+
+## User Targeting
+
+Pass user information to target features to specific users or segments:
+
+```java
+FeatureflowUser user = new FeatureflowUser("unique-user-id")
+    .withAttribute("tier", "silver")
+    .withAttribute("age", 32)
+    .withAttribute("signup_date", new DateTime(2017, 1, 1, 12, 0, 0, 0))
+    .withAttribute("email", "user@example.com")
+    .withAttributes("user_role", Arrays.asList("admin", "beta_tester"));
+```
+
+User attributes can be:
+- `String`
+- `Number`
+- `DateTime`
+- `List<String>`, `List<Number>`, or `List<DateTime>`
+
+Evaluate with the user context:
+
+```java
+featureflow.evaluate("my-feature", user).isOn();
+```
+
+:::note
+When a list of attributes is passed, rules may match any value in the list. User attributes are stored in Featureflow for use in rule creation. Set `.saveUser(false)` on the user object to prevent this.
+:::
+
+## Spring Integration
+
+### Using a UserProvider
+
+Create a `FeatureflowUserProvider` to automatically obtain the current user context (e.g., from a logged-in session):
+
+```java
+@Configuration
+public class FeatureflowConfig {
+
+    @Autowired
+    private UserService userService;
+
+    @Bean
+    public FeatureflowClient featureflowClient() {
+        return FeatureflowClient.builder("sdk-srv-env-YOUR_API_KEY")
+            .withUserProvider(() -> getFeatureflowUser())
+            .build();
+    }
+
+    private FeatureflowUser getFeatureflowUser() {
+        User currentUser = userService.getCurrentUser();
+        return new FeatureflowUser(currentUser.getId())
+            .withAttribute("name", currentUser.getName())
+            .withAttributes("user_role", 
+                currentUser.getRoles().stream()
+                    .map(Role::getName)
+                    .collect(Collectors.toList()));
+    }
+}
+```
+
+### Using a UserLookupProvider
+
+For user lookup by ID:
+
+```java
+@Bean
+public FeatureflowClient featureflowClient() {
+    return FeatureflowClient.builder("sdk-srv-env-YOUR_API_KEY")
+        .withUserLookupProvider(userId -> getFeatureflowUser(userId))
+        .build();
+}
+
+private FeatureflowUser getFeatureflowUser(String userId) {
+    User user = userService.findOneById(userId);
+    return new FeatureflowUser(user.getId())
+        .withAttribute("name", user.getName())
+        .withAttributes("user_role", 
+            user.getRoles().stream()
+                .map(Role::getName)
+                .collect(Collectors.toList()));
+}
+```
+
+Then evaluate using just the user ID:
+
+```java
+featureflow.evaluate("my-feature", "user123").isOn();
+```
+
+## Real-time Updates
+
+Listen for feature control updates using callbacks:
+
+```java
+FeatureflowClient featureflow = FeatureflowClient.builder(apiKey)
+    .withFeatures(Arrays.asList(
+        new Feature("feature-one"),
+        new Feature("feature-two")
+    ))
+    .withUpdateCallback(control -> 
+        System.out.println("Feature updated: " + control.getKey()))
+    .build();
+```
+
+## API Reference
+
+### Evaluate Methods
+
+| Method | Description |
+|--------|-------------|
+| `evaluate(featureKey, user).isOn()` | Returns `true` if variant equals `"on"` |
+| `evaluate(featureKey, user).isOff()` | Returns `true` if variant equals `"off"` |
+| `evaluate(featureKey, user).is(value)` | Returns `true` if variant equals the specified value |
+| `evaluate(featureKey, user).value()` | Returns the current variant value as a string |
+
+### FeatureflowUser Builder
+
+| Method | Description |
+|--------|-------------|
+| `withAttribute(key, value)` | Add a single attribute (String, Number, or DateTime) |
+| `withAttributes(key, list)` | Add a list attribute |
+| `saveUser(boolean)` | Control whether user is saved in Featureflow (default: true) |
+
+## Next Steps
+
+- [Gradual Rollouts](/gradual-rollouts) — Release to a percentage of users
+- [Targeting Features](/targeting-features) — Control who sees what
+- [Managing Variants](/manage-feature-variants) — Create custom feature states
+
+## License
+
+Apache-2.0
