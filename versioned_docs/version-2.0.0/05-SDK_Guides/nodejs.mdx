@@ -1,0 +1,194 @@
+---
+title: Node.js SDK
+sidebar_label: Node.js SDK
+slug: /nodejs-sdk
+---
+
+Get your Featureflow account at [featureflow.io](http://www.featureflow.io)
+
+GitHub: https://github.com/featureflow/featureflow-node-sdk
+
+## Installation
+
+```bash
+npm install --save featureflow-node-sdk
+```
+
+## Quick Start
+
+### Create a Featureflow Client
+
+Require the SDK and create a client with your **Server Environment API Key**:
+
+```javascript
+const Featureflow = require('featureflow-node-sdk');
+
+const featureflow = new Featureflow.Client({
+  apiKey: 'sdk-srv-env-YOUR_API_KEY'
+});
+```
+
+Or using ES6 imports:
+
+```javascript
+import Featureflow from 'featureflow-node-sdk';
+
+const featureflow = new Featureflow.Client({
+  apiKey: 'sdk-srv-env-YOUR_API_KEY'
+});
+```
+
+:::caution Singleton Pattern
+The `featureflow` client should be instantiated once and shared across your application. Do not create a new client for each request.
+:::
+
+### Waiting for Ready State
+
+The client loads feature rules asynchronously. Use the callback or `ready()` method to ensure features are available:
+
+```javascript
+// Option 1: Callback
+new Featureflow.Client({ apiKey: 'YOUR_API_KEY' }, function(error, featureflow) {
+  // featureflow is ready to use
+});
+
+// Option 2: Ready method
+const featureflow = new Featureflow.Client({ apiKey: 'YOUR_API_KEY' });
+
+featureflow.ready(function() {
+  // featureflow is ready to use
+});
+```
+
+### Evaluate a Feature
+
+Check the value of a feature flag:
+
+```javascript
+if (featureflow.evaluate('my-feature-key', user).isOn()) {
+  // Feature is enabled
+}
+
+if (featureflow.evaluate('my-feature-key', user).isOff()) {
+  // Feature is disabled
+}
+```
+
+For custom variants:
+
+```javascript
+if (featureflow.evaluate('my-feature-key', user).is('red')) {
+  console.log('Showing red variant');
+}
+```
+
+## User Targeting
+
+Define users to target features to specific segments:
+
+```javascript
+const user = new Featureflow.UserBuilder('unique-user-id')
+  .withAttribute('country', 'US')
+  .withAttribute('tier', 'gold')
+  .withAttributes('roles', ['USER_ADMIN', 'BETA_CUSTOMER'])
+  .build();
+
+featureflow.evaluate('my-feature', user).isOn();
+```
+
+For simple cases, you can pass just the user ID:
+
+```javascript
+featureflow.evaluate('my-feature', 'user-123').isOn();
+```
+
+## Pre-registering Features
+
+Define default variants for features that may not yet exist in Featureflow. These serve as failover values when the server is unreachable:
+
+```javascript
+const featureflow = new Featureflow.Client({
+  apiKey: 'YOUR_API_KEY',
+  withFeatures: [
+    new Featureflow.Feature('feature-one', 'on').build(),
+    new Featureflow.Feature('feature-two').build(),        // defaults to 'off'
+    new Featureflow.Feature('feature-three', 'custom').build()
+  ]
+});
+```
+
+## Environment Variable
+
+You can set your API key via environment variable instead of passing it directly:
+
+```bash
+export FEATUREFLOW_SERVER_KEY=sdk-srv-env-YOUR_API_KEY
+```
+
+```javascript
+// No apiKey needed when env var is set
+const featureflow = new Featureflow.Client();
+```
+
+## Express Integration
+
+For Express applications, initialize the client once at startup:
+
+```javascript
+const express = require('express');
+const Featureflow = require('featureflow-node-sdk');
+
+const app = express();
+
+const featureflow = new Featureflow.Client({
+  apiKey: 'sdk-srv-env-YOUR_API_KEY'
+});
+
+featureflow.ready(() => {
+  app.get('/', (req, res) => {
+    const user = new Featureflow.UserBuilder(req.user.id)
+      .withAttribute('plan', req.user.plan)
+      .build();
+
+    if (featureflow.evaluate('new-homepage', user).isOn()) {
+      res.render('homepage-new');
+    } else {
+      res.render('homepage');
+    }
+  });
+
+  app.listen(3000);
+});
+```
+
+See the full [Express example](https://github.com/featureflow/featureflow-node-example) on GitHub.
+
+## API Reference
+
+### Evaluate Methods
+
+| Method | Description |
+|--------|-------------|
+| `evaluate(featureKey, user).isOn()` | Returns `true` if variant equals `"on"` |
+| `evaluate(featureKey, user).isOff()` | Returns `true` if variant equals `"off"` |
+| `evaluate(featureKey, user).is(value)` | Returns `true` if variant equals the specified value |
+| `evaluate(featureKey, user).value()` | Returns the current variant value as a string |
+
+### UserBuilder Methods
+
+| Method | Description |
+|--------|-------------|
+| `withAttribute(key, value)` | Add a single attribute |
+| `withAttributes(key, array)` | Add an array attribute |
+| `build()` | Build the user object |
+
+## Next Steps
+
+- [Gradual Rollouts](/gradual-rollouts) — Release to a percentage of users
+- [Targeting Features](/targeting-features) — Control who sees what
+- [Managing Variants](/manage-feature-variants) — Create custom feature states
+- [AWS Lambda Guide](/using-featureflow-with-aws-lambda) — Serverless integration
+
+## License
+
+Apache-2.0
