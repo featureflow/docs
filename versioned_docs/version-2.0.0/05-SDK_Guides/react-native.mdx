@@ -1,0 +1,317 @@
+---
+title: React Native SDK
+sidebar_label: React Native SDK
+slug: /react-native-sdk
+---
+
+Get your Featureflow account at [featureflow.io](http://www.featureflow.io)
+
+GitHub: https://github.com/featureflow/featureflow-react-native
+
+## Installation
+
+```bash
+# npm
+npm install @featureflow/react-native-sdk @react-native-async-storage/async-storage
+
+# yarn
+yarn add @featureflow/react-native-sdk @react-native-async-storage/async-storage
+```
+
+For iOS, install CocoaPods dependencies:
+
+```bash
+cd ios && pod install
+```
+
+### Peer Dependencies
+
+- `react` >= 16.8.0
+- `react-native` >= 0.60.0
+- `@react-native-async-storage/async-storage` >= 1.17.0
+
+## Quick Start
+
+### 1. Wrap Your App with the Provider
+
+```tsx
+import React from 'react';
+import { FeatureflowProvider } from '@featureflow/react-native-sdk';
+import MainApp from './MainApp';
+
+const FF_KEY = 'js-env-YOUR_KEY_HERE';
+
+function App() {
+  const user = {
+    id: 'user-123',
+    attributes: {
+      tier: 'gold',
+      country: 'australia'
+    }
+  };
+
+  return (
+    <FeatureflowProvider apiKey={FF_KEY} user={user}>
+      <MainApp />
+    </FeatureflowProvider>
+  );
+}
+
+export default App;
+```
+
+### 2. Use Feature Flags in Components
+
+```tsx
+import React from 'react';
+import { View, Text } from 'react-native';
+import { useFeatureflow, useBooleanFlag } from '@featureflow/react-native-sdk';
+
+function MainApp() {
+  // Option 1: Boolean flag hook (recommended for on/off flags)
+  const { isOn, isLoading } = useBooleanFlag('new-feature');
+
+  // Option 2: Client for more control
+  const featureflow = useFeatureflow();
+  const variant = featureflow.evaluate('experiment-color').value();
+
+  if (isLoading) {
+    return <Text>Loading...</Text>;
+  }
+
+  return (
+    <View style={{ backgroundColor: variant === 'blue' ? 'blue' : 'red' }}>
+      {isOn ? <NewFeature /> : <OldFeature />}
+    </View>
+  );
+}
+```
+
+## Hooks
+
+### `useFeatureflow()`
+
+Returns the Featureflow client for evaluating features and tracking goals:
+
+```tsx
+import { useFeatureflow } from '@featureflow/react-native-sdk';
+
+function MyComponent() {
+  const featureflow = useFeatureflow();
+
+  const isOn = featureflow.evaluate('my-feature').isOn();
+  const variant = featureflow.evaluate('my-feature').value();
+  const isPremium = featureflow.evaluate('pricing-tier').is('premium');
+
+  // Track a goal (for A/B testing)
+  const handlePurchase = () => {
+    featureflow.goal('purchase-completed');
+  };
+
+  return (
+    <Button onPress={handlePurchase}>
+      {isPremium ? 'Premium Checkout' : 'Standard Checkout'}
+    </Button>
+  );
+}
+```
+
+### `useBooleanFlag(key, options?)`
+
+Convenience hook for on/off flags:
+
+```tsx
+import { useBooleanFlag } from '@featureflow/react-native-sdk';
+
+function MyComponent() {
+  const { isOn, isOff, isLoading } = useBooleanFlag('dark-mode');
+
+  // With default value
+  const { isOn: betaEnabled } = useBooleanFlag('beta-feature', {
+    defaultValue: true
+  });
+
+  return isOn ? <DarkTheme /> : <LightTheme />;
+}
+```
+
+### `useStringFlag(key, defaultValue?)`
+
+Hook for multi-variant flags:
+
+```tsx
+import { useStringFlag } from '@featureflow/react-native-sdk';
+
+function PricingPage() {
+  const { value, isLoading } = useStringFlag('pricing-tier', 'standard');
+
+  switch (value) {
+    case 'premium':
+      return <PremiumPricing />;
+    case 'basic':
+      return <BasicPricing />;
+    default:
+      return <StandardPricing />;
+  }
+}
+```
+
+### `useFeatures()`
+
+Returns all evaluated features:
+
+```tsx
+import { useFeatures } from '@featureflow/react-native-sdk';
+
+function DebugPanel() {
+  const features = useFeatures();
+
+  return (
+    <View>
+      {Object.entries(features).map(([key, value]) => (
+        <Text key={key}>{key}: {value}</Text>
+      ))}
+    </View>
+  );
+}
+```
+
+### `useFeatureflowStatus()`
+
+Check client initialization status:
+
+```tsx
+import { useFeatureflowStatus } from '@featureflow/react-native-sdk';
+
+function AppLoader() {
+  const { isLoading, error, isReady } = useFeatureflowStatus();
+
+  if (isLoading) return <SplashScreen />;
+  if (error) return <ErrorScreen error={error} />;
+  return <MainApp />;
+}
+```
+
+## Updating User Context
+
+Update the user after login to re-evaluate features:
+
+```tsx
+const featureflow = useFeatureflow();
+
+// After user logs in
+await featureflow.updateUser({
+  id: 'new-user-id',
+  attributes: {
+    tier: 'premium',
+    beta: true
+  }
+});
+```
+
+## Configuration Options
+
+```tsx
+<FeatureflowProvider
+  apiKey="js-env-YOUR_KEY"
+  user={user}
+  config={{
+    defaultFeatures: {
+      'new-feature': 'off',
+      'experiment': 'control'
+    },
+    timeout: 5000,
+    offline: false
+  }}
+  loadingComponent={<LoadingScreen />}
+>
+  <App />
+</FeatureflowProvider>
+```
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `defaultFeatures` | object | `{}` | Default values for offline/loading states |
+| `offline` | boolean | `false` | Run in offline mode (no network requests) |
+| `timeout` | number | `10000` | Request timeout in milliseconds |
+| `initOnCache` | boolean | `false` | Emit INIT event when loading from cache |
+
+## Advanced Usage
+
+### Manual Client Initialization
+
+For more control over initialization timing:
+
+```tsx
+import { init, FeatureflowProviderWithClient } from '@featureflow/react-native-sdk';
+
+function App() {
+  const [client, setClient] = useState(null);
+
+  useEffect(() => {
+    init('js-env-YOUR_KEY', { id: 'user-123' }).then(setClient);
+  }, []);
+
+  if (!client) return <SplashScreen />;
+
+  return (
+    <FeatureflowProviderWithClient client={client}>
+      <MainApp />
+    </FeatureflowProviderWithClient>
+  );
+}
+```
+
+### Event Handling
+
+Listen to Featureflow events:
+
+```tsx
+import { useFeatureflow, events } from '@featureflow/react-native-sdk';
+
+function MyComponent() {
+  const featureflow = useFeatureflow();
+
+  useEffect(() => {
+    const handleInit = (features) => {
+      console.log('Features loaded:', features);
+    };
+
+    featureflow.on(events.INIT, handleInit);
+    return () => featureflow.off(events.INIT, handleInit);
+  }, [featureflow]);
+}
+```
+
+Available events: `INIT`, `LOADED`, `LOADED_FROM_CACHE`, `ERROR`, `UPDATED`
+
+## TypeScript Support
+
+The SDK includes comprehensive type definitions:
+
+```typescript
+import type {
+  FeatureflowUser,
+  FeatureflowConfig,
+  FeatureflowClient,
+  EvaluatedFeatures
+} from '@featureflow/react-native-sdk';
+
+const user: FeatureflowUser = {
+  id: 'user-123',
+  attributes: {
+    tier: 'gold',
+    countries: ['AU', 'NZ']
+  }
+};
+```
+
+## Next Steps
+
+- [Gradual Rollouts](/gradual-rollouts) — Release to a percentage of users
+- [Targeting Features](/targeting-features) — Control who sees what
+- [Managing Variants](/manage-feature-variants) — Create custom feature states
+
+## License
+
+Apache-2.0
