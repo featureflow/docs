@@ -1,0 +1,137 @@
+---
+title: MCP Server Integration
+sidebar_label: MCP (AI Assistants)
+slug: /mcp-integration
+---
+
+# MCP Server Integration
+
+Integrate Featureflow with AI assistants like Claude, Cursor, and other MCP-compatible tools. The Featureflow MCP server enables AI assistants to manage your feature flags, projects, environments, and more through natural language.
+
+GitHub: https://github.com/featureflow/featureflow-mcp
+
+## What is MCP?
+
+[Model Context Protocol (MCP)](https://modelcontextprotocol.io/) is an open standard that allows AI assistants to interact with external tools and services. With the Featureflow MCP server, you can ask your AI assistant to:
+
+- List and search feature flags
+- Create, update, and delete features
+- Enable or disable features in specific environments
+- Manage projects and environments
+- View targeting rules and API keys
+
+## Quick Start
+
+### 1. Create a Personal Access Token
+
+1. Log into Featureflow as an administrator
+2. Navigate to **Administration** → **API Tokens**
+3. Click **Create Token** and copy the token (starts with `api-`)
+
+### 2. Configure in Cursor
+
+Add to your `~/.cursor/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "featureflow": {
+      "command": "npx",
+      "args": ["-y", "featureflow-mcp"],
+      "env": {
+        "FEATUREFLOW_API_TOKEN": "api-your-token-here"
+      }
+    }
+  }
+}
+```
+
+### 3. Restart Cursor
+
+Press `Cmd+Shift+P` → "MCP: Restart Servers" or restart Cursor.
+
+That's it! You can now ask Claude to manage your feature flags.
+
+## Configuration
+
+| Environment Variable | Description |
+|---------------------|-------------|
+| `FEATUREFLOW_API_TOKEN` | Personal Access Token (required) |
+
+## Available Tools
+
+### Projects
+
+| Tool | Description |
+|------|-------------|
+| `list_projects` | List all projects, optionally filtered by query |
+| `get_project` | Get a specific project by ID or key |
+| `create_project` | Create a new project |
+| `update_project` | Update an existing project |
+| `delete_project` | Delete a project |
+
+### Features
+
+| Tool | Description |
+|------|-------------|
+| `list_features` | List features with optional filters |
+| `get_feature` | Get a specific feature by ID or unified key |
+| `create_feature` | Create a new feature flag |
+| `update_feature` | Update an existing feature |
+| `clone_feature` | Clone a feature with a new key |
+| `archive_feature` | Archive or unarchive a feature |
+| `delete_feature` | Delete a feature |
+
+### Feature Controls
+
+| Tool | Description |
+|------|-------------|
+| `get_feature_control` | Get feature control settings for an environment |
+| `update_feature_control` | Enable/disable features, modify rules |
+
+### Environments
+
+| Tool | Description |
+|------|-------------|
+| `list_environments` | List environments for a project |
+| `get_environment` | Get a specific environment |
+| `create_environment` | Create a new environment |
+| `update_environment` | Update an existing environment |
+| `delete_environment` | Delete an environment |
+
+### Targets & API Keys
+
+| Tool | Description |
+|------|-------------|
+| `list_targets` | List targeting attributes for a project |
+| `get_target` | Get a specific target by key |
+| `list_api_keys` | List SDK API keys for an environment |
+
+## Example Usage
+
+Once configured, you can ask your AI assistant things like:
+
+- "List all my Featureflow projects"
+- "Create a feature called 'new-checkout' in the 'webapp' project"
+- "Enable the 'dark-mode' feature in production"
+- "What features are currently enabled in staging?"
+- "Disable 'beta-feature' in all environments"
+- "Show me the targeting rules for 'premium-feature'"
+- "Clone 'existing-feature' to 'new-feature-v2'"
+
+## Troubleshooting
+
+### MCP Server Not Connecting
+
+1. Verify your API token is correct and starts with `api-`
+2. Ensure the token has the correct permissions
+3. Check that `npx` is available in your PATH
+4. Restart your AI assistant after configuration changes
+
+### Permission Errors
+
+The API token must have sufficient permissions for the operations you're requesting. Contact your Featureflow administrator if you need elevated access.
+
+## License
+
+MIT - see [LICENSE](https://github.com/featureflow/featureflow-mcp/blob/main/LICENSE) for details.
