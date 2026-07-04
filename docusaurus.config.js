@@ -61,7 +61,7 @@ const config = {
         },
         items: [
           {
-            href: 'https://beta.featureflow.io/api/swagger-ui/index.html',
+            href: 'https://api.featureflow.com/api/swagger-ui/index.html',
             label: 'API Reference',
             position: 'left',
           },
