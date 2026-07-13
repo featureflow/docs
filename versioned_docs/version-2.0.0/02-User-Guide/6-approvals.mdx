@@ -14,7 +14,7 @@ An approval is required for a feature control change when **any** of the followi
 
 - **Environment-level** — the environment has *Require approval for changes* enabled. Every feature change in that environment requires approval. This is typical for production environments.
 - **Feature-level** — the feature has *Require approval for changes* enabled. Changes to that feature require approval in every environment.
-- **Release pipeline phase** — the feature is assigned to a release pipeline whose phase for that environment requires approval.
+- **Release pipeline phase** — the feature is assigned to a [release pipeline](/release-pipelines) whose phase for that environment requires approval.
 
 These combine with OR logic — if any one of them applies, the approval flow runs.
 
