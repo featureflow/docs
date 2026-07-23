@@ -1,0 +1,39 @@
+---
+title: Feature Lifecycle
+sidebar_label: Feature Lifecycle
+slug: /feature-lifecycle
+---
+
+# Feature Lifecycle
+
+Every feature flag has a natural life: it's created, developed, rolled out, goes fully live, and — for non-permanent flags — should eventually be removed from your code and archived. Featureflow tracks this journey automatically and shows it as the **Lifecycle Status** timeline on the feature's Overview tab.
+
+![Lifecycle status timeline](/img/2-0/features-lifecycle-status.png)
+
+The current stage is computed for you from real traffic and targeting state — there is nothing to set manually. Hover the status in the feature list to see the full timeline:
+
+![Lifecycle status hover timeline](/img/2-0/features-lifecycle-status-hover.png)
+
+## The stages
+
+| Stage | Meaning |
+|---|---|
+| **Created** | The feature exists but hasn't received traffic in any environment yet. |
+| **Development** | The feature is receiving traffic in at least one **non-production** environment, but not yet in production. |
+| **Rollout** | The feature is receiving traffic in **production**, but is either disabled or serving a mix of variants via [targeting rules](/targeting-features) or a [gradual rollout](/gradual-rollouts) — it's on its way out to everyone. |
+| **Live** | Every production environment where the feature is active is serving **100% of traffic to a single variant**. The rollout is complete. |
+| **Stale** | A non-permanent feature has been serving one variant to all production traffic for longer than its stale period. The flag has done its job — it's time to remove it from your code and archive it. |
+| **Archived** | The feature has been archived and is no longer active. |
+
+Stage detection is driven by [impression statistics](/feature-statistics) — a feature "receives traffic" when SDKs report evaluations for it in an environment.
+
+## Permanent features
+
+Some flags aren't meant to be removed — kill switches, ops toggles, entitlement flags. Mark these as **permanent** in the feature's settings. Permanent features skip **Rollout** and never become **Stale**: once they're active in production they're simply **Live**.
+
+## Why this matters
+
+Flags that outlive their purpose become technical debt: dead branches in your code and noise in your dashboard. The lifecycle status gives you an at-a-glance answer to the two questions that matter most:
+
+- **Is this rollout finished?** — look for **Live**.
+- **Can this flag be deleted from the code?** — look for **Stale**, then remove the flag from your codebase and archive the feature.

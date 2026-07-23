@@ -1,0 +1,43 @@
+---
+title: Feature Statistics
+sidebar_label: Feature Statistics
+slug: /feature-statistics
+---
+
+# Feature Statistics
+
+The **Statistics** tab on a feature shows how much traffic the feature is receiving and which variants your users are being served, per environment, over the last 30 days.
+
+![Feature statistics tab](/img/2-0/feature-statistics.png)
+
+## What is an impression?
+
+An **impression** is recorded every time an SDK evaluates the feature for a user — that is, every call to `evaluate('my-feature')` that resolves a variant. SDKs batch impressions and send them to Featureflow in the background, so counts can take a short while to appear after traffic starts flowing.
+
+A few things to keep in mind:
+
+- Impressions count **evaluations, not unique users**. A single user who triggers ten evaluations produces ten impressions.
+- Impressions are recorded **per environment** — use the environment switcher at the top right of the tab to move between them.
+- No impressions usually means the feature code path isn't being reached, the SDK isn't initialised in that environment, or the API key belongs to a different environment.
+
+## Reading the tab
+
+- **Total Impressions** — the total number of evaluations in the selected environment over the last 30 days.
+- **Variant Distribution** — how those impressions break down per variant (for a simple boolean feature, `on` vs `off`), with counts and percentages. This is the quickest way to confirm a [gradual rollout](/gradual-rollouts) is serving roughly the split you configured.
+- **Daily Impressions chart** — a stacked area chart of impressions per day, per variant. Hover to inspect individual days.
+
+## What statistics are used for
+
+Beyond monitoring, impression data drives Featureflow's automated housekeeping:
+
+- A feature that starts receiving traffic in a non-production environment moves from **Created** to **Development** on its [lifecycle timeline](/feature-lifecycle).
+- A non-permanent feature that has been serving 100% of production traffic to a single variant for longer than its stale period is flagged as **Stale** — a prompt to remove the flag from your code and archive it.
+
+## Common checks
+
+| Question | Where to look |
+|---|---|
+| Is my rollout split actually 20/80? | Variant Distribution percentages |
+| Did the feature stop being used? | Daily Impressions chart trailing off |
+| Is the SDK wired up in this environment? | Total Impressions > 0 for that environment |
+| Is it safe to archive this feature? | All environments show a single variant (or no recent traffic) |
