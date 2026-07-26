@@ -70,7 +70,11 @@ A variant's JSON config is optional and independent per variant — you can set 
 JSON config values are served to your SDKs whenever the variant is evaluated, but they are **never** included in evaluation events sent back to Featureflow — only the variant key is tracked for statistics. Keep that in mind if you rely on event data for analysis of variant usage.
 :::
 
-Once saved, the JSON value is available to your application through the SDKs — see [Node.js](/nodejs-sdk#json-configuration-values), [JavaScript](/javascript-client#json-configuration-values), and [React](/reactjs-client#json-configuration-values) for examples.
+Once saved, the JSON value is available to your application through the SDKs — see [Node.js](/nodejs-sdk#json-configuration-values), [JavaScript](/javascript-client#json-configuration-values), [React](/reactjs-client#json-configuration-values), and [Java](/java-sdk#json-configuration-values) for examples.
+
+:::note
+JSON config values require a minimum SDK version. Check the [SDK Compatibility](/sdk-compatibility) table before relying on this feature — older SDKs still evaluate the variant key correctly, they just won't have a method to read the JSON payload.
+:::
 
 ## Next Steps
 
