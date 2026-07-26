@@ -37,6 +37,41 @@ Modifying or removing a variant affects all environments. If a variant in use is
 
 You can also define variants directly in your application code. When you register a feature with predefined variants, Featureflow will automatically make them available in the dashboard.
 
+## JSON Configuration Values
+
+Beyond a plain key, a variant can carry an arbitrary **JSON config payload** — structured data your application reads alongside (or instead of) the variant key. Use this to ship configuration changes through Featureflow without a deploy, for example:
+
+- Theme or UI settings — `{ "color": "#0066cc", "layout": "compact" }`
+- Feature limits or thresholds — `{ "maxItems": 10, "timeoutMs": 5000 }`
+- Full structured content — copy, pricing tiers, experiment parameters
+
+### Adding a JSON Value to a Variant
+
+1. Navigate to your feature's **Settings** tab and click **Change Variants**
+
+   ![Change variants](/img/2-0/features-variant-change-variants.png)
+
+2. Each variant now shows an optional **JSON config** editor below its Key/Name/Description fields
+3. Enter a JSON object for the variant — the editor validates syntax as you type and shows the current size against the limit
+
+   ![JSON config editor](/img/2-0/features-variant-json-editor.png)
+
+4. Invalid JSON is flagged inline before you can save
+
+   ![JSON config syntax validation](/img/2-0/features-variant-json-editor-syntax.png)
+
+5. Click **Save Feature Settings**
+
+:::note
+A variant's JSON config is optional and independent per variant — you can set it on some variants and leave others as plain keys. There's a maximum size of **32KB** per variant.
+:::
+
+:::caution
+JSON config values are served to your SDKs whenever the variant is evaluated, but they are **never** included in evaluation events sent back to Featureflow — only the variant key is tracked for statistics. Keep that in mind if you rely on event data for analysis of variant usage.
+:::
+
+Once saved, the JSON value is available to your application through the SDKs — see [Node.js](/nodejs-sdk#json-configuration-values), [JavaScript](/javascript-client#json-configuration-values), and [React](/reactjs-client#json-configuration-values) for examples.
+
 ## Next Steps
 
 - [Gradual rollouts](/gradual-rollouts) — release variants to a percentage of users

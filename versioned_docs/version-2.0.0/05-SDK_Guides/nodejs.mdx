@@ -82,6 +82,28 @@ if (featureflow.evaluate('my-feature-key', user).is('red')) {
 }
 ```
 
+### JSON Configuration Values
+
+If a variant has a [JSON config value](/manage-feature-variants#json-configuration-values) set in the dashboard, use `jsonValue()` to read it:
+
+```javascript
+const config = featureflow.evaluate('checkout-theme', user).jsonValue();
+
+if (config) {
+  applyTheme(config.color, config.layout);
+}
+```
+
+`jsonValue()` returns `undefined` if the resolved variant has no JSON config set — always guard against that case. It's independent of `value()`/`is()`/`isOn()`/`isOff()`, which continue to work with the plain variant key string:
+
+```javascript
+const evaluation = featureflow.evaluate('checkout-theme', user);
+
+if (evaluation.isOn()) {
+  const config = evaluation.jsonValue(); // e.g. { color: '#0066cc', maxItems: 10 }
+}
+```
+
 ## User Targeting
 
 Define users to target features to specific segments:
@@ -173,6 +195,7 @@ See the full [Express example](https://github.com/featureflow/featureflow-node-e
 | `evaluate(featureKey, user).isOff()` | Returns `true` if variant equals `"off"` |
 | `evaluate(featureKey, user).is(value)` | Returns `true` if variant equals the specified value |
 | `evaluate(featureKey, user).value()` | Returns the current variant value as a string |
+| `evaluate(featureKey, user).jsonValue()` | Returns the variant's JSON config value, or `undefined` if it has none |
 
 ### UserBuilder Methods
 

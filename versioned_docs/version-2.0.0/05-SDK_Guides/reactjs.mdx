@@ -196,3 +196,45 @@ export default withFeatureflowProvider({
 ```
 
 For more, see the github repo [Featureflow Javascript Client](https://github.com/featureflow/featureflow-javascript-sdk)
+
+### JSON Configuration Values
+
+If a variant has a [JSON config value](/manage-feature-variants#json-configuration-values) set in the dashboard, use the `useJsonValue` hook to read it directly:
+
+```javascript
+import { useJsonValue } from 'react-featureflow-client'
+
+interface ThemeConfig {
+  color: string;
+  layout: string;
+}
+
+function CheckoutButton() {
+  const theme = useJsonValue<ThemeConfig>('checkout-theme');
+
+  return (
+    <button style={{ background: theme?.color ?? '#000000' }}>
+      Checkout
+    </button>
+  );
+}
+```
+
+`useJsonValue` returns `undefined` if the resolved variant has no JSON config set, so always provide a fallback. It re-evaluates automatically whenever the underlying feature updates, the same as `useFeature` and `useFeatures`.
+
+If you need the full evaluation result (variant key, `isOn()`/`isOff()`, and the JSON value together), use `useFeature` instead:
+
+```javascript
+import { useFeature } from 'react-featureflow-client'
+
+function CheckoutButton() {
+  const evaluation = useFeature('checkout-theme');
+  const theme = evaluation.jsonValue<ThemeConfig>();
+
+  return (
+    <button style={{ background: theme?.color ?? '#000000' }}>
+      {evaluation.isOn() ? 'Checkout' : 'Unavailable'}
+    </button>
+  );
+}
+```

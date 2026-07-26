@@ -85,6 +85,8 @@ This will load the value of each feature for the current environment specified b
 
 **Note: You are responsible for passing the featureflow client instance around your application**
 
+### Evaluate a feature
+
 In your code, you can test the value of your feature where the value of `my-feature-key` is equal to `'on'`
 ```js
   if (featureflow.evaluate('my-feature-key').is('on')){
@@ -104,6 +106,7 @@ if(featureflow.evaluate('my-feature-key').isOff()){
   // this feature code won't be run because 'my-feature-key' is not set to 'off'
 }
 ```
+### User context values
 
 You can include user context information when you initialise featureflow, these attributes can be used in feature targeting rules:
 
@@ -134,6 +137,32 @@ var featureflow = Featureflow.init(FF_KEY, user, {
 ```
 
 Further documentation can be found [here](http://docs.featureflow.io/docs)
+
+### JSON Configuration Values
+
+If a variant has a [JSON config value](/manage-feature-variants#json-configuration-values) set in the dashboard, use `jsonValue()` to read it:
+
+```js
+var evaluation = featureflow.evaluate('checkout-theme');
+var config = evaluation.jsonValue();
+
+if (config) {
+  applyTheme(config.color, config.layout);
+}
+```
+
+`jsonValue()` returns `undefined` if the resolved variant has no JSON config set. It's independent of `value()`/`is()`/`isOn()`/`isOff()`, which continue to work with the plain variant key string — calling `jsonValue()` never changes what those return.
+
+TypeScript users can pass a generic to type the result:
+
+```ts
+interface ThemeConfig {
+  color: string;
+  layout: string;
+}
+
+const config = featureflow.evaluate('checkout-theme').jsonValue<ThemeConfig>();
+```
 
 
 #### Anonymous User and Featureflow Server SDKs
@@ -219,6 +248,14 @@ Returns the value of a feature for the given user.
 |---------------|----------|--------------|----------------------------------------------------------------|
 | `featureKey*`  | `string` | **`Required`** | The feature key you are targeting |
 | **`return`** | `string` | | The value of the feature, or the default feature value from `config.defaultFeatures[featureKey]` if present, or `'off'`  |
+
+##### `featureflow.evaluate(featureKey).jsonValue()`
+Returns the evaluated variant's JSON config value, if one is set in the dashboard.
+
+| Params | Type | Default | Description |
+|---------------|----------|--------------|----------------------------------------------------------------|
+| `featureKey*`  | `string` | **`Required`** | The feature key you are targeting |
+| **`return`** | `object \| undefined` | | The variant's JSON config value, or `undefined` if it has none |
 
 #### `featureflow.goal(goalKey)`
 Sends a goal event, along with the current evaluated features to **featureflow.io**. Use with experiments in the admin console.
@@ -338,18 +375,6 @@ Fired when an error has occurred evaluating the feature features for the given u
 Callback is fired with one parameter with the error message.
 
 
-## Roadmap
-- [x] Write documentation
-- [x] Release to npm
-- [x] Release to bower
-- [x] Automate release to bower on `npm prepublish`
-- [ ] Automate release script to cdn on `npm prepublish`
-
-## Publishing
-```
-./deploy_prod_npm.sh
-./deploy_prod_s3.sh
-```
 ## License
 
 Apache-2.0
