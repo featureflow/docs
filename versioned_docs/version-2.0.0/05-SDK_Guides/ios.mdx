@@ -1,0 +1,385 @@
+---
+title: iOS SDK
+sidebar_label: iOS SDK
+slug: /ios-sdk
+sidebar_position: 2
+---
+
+Get your Featureflow account at [featureflow.io](http://www.featureflow.io)
+
+GitHub: https://github.com/featureflow/featureflow-ios-sdk
+
+The Featureflow client SDK for Apple platforms — iOS, macOS, tvOS and watchOS. It is a
+**client-side** SDK: it asks Featureflow for values already evaluated for one user, rather than
+downloading your rules and evaluating them on the device.
+
+## Installation
+
+### Swift Package Manager
+
+In Xcode, choose **File → Add Package Dependencies** and enter:
+
+```
+https://github.com/featureflow/featureflow-ios-sdk.git
+```
+
+Or add it to `Package.swift`:
+
+```swift
+dependencies: [
+    .package(url: "https://github.com/featureflow/featureflow-ios-sdk.git", from: "0.1.0")
+]
+```
+
+### CocoaPods
+
+```ruby
+pod 'Featureflow', '~> 0.1'
+```
+
+### Requirements
+
+- iOS 13+
+- macOS 11+
+- tvOS 13+
+- watchOS 6+
+- Swift 5.9+
+
+## Getting your key
+
+Go to **Environments → (your environment) → API Keys** in the Featureflow dashboard and copy the
+**Client SDK key**. It starts with `sdk-js-env-`.
+
+:::caution
+**Use the client key, never the server key.**
+
+A `sdk-js-env-` key is public by design — it only ever returns already-evaluated values for a
+single user, which is why it is safe to ship. A `sdk-srv-env-` key downloads your entire ruleset,
+including every targeting rule and attribute name, and anyone can extract it from a shipped
+`.ipa`. If a server key has ever been built into an app, rotate it.
+:::
+
+## Quick start
+
+```swift
+import Featureflow
+
+let user = FeatureflowUser.Builder("user-123")
+    .withAttribute("tier", "gold")
+    .withAttributes("roles", ["beta"])
+    .build()
+
+let featureflow = await FeatureflowClient.initialize(
+    apiKey: "sdk-js-env-YOUR_KEY",
+    user: user
+)
+
+if featureflow.evaluate("new-checkout").isOn() {
+    // the new checkout
+} else {
+    // the old one
+}
+```
+
+`initialize` waits for the first evaluation, so awaiting it before rendering flag-driven UI avoids
+a visible variant swap on launch. It never throws — if Featureflow is unreachable the client falls
+back to the on-disk cache, and then to your configured defaults, because a flag service being down
+must never stop your app from starting.
+
+Create **one** client and share it. A second instance double-counts impressions and can disagree
+with the first about a flag. If you would rather not thread it through your app,
+`FeatureflowClient.shared` holds the instance that `initialize` created.
+
+## Evaluating features
+
+```swift
+let evaluation = featureflow.evaluate("checkout-layout")
+
+evaluation.isOn()          // variant == "on"
+evaluation.isOff()         // variant == "off"
+evaluation.is("wizard")    // any variant, case-insensitive
+evaluation.value()         // "wizard"
+evaluation.jsonValue()     // the variant's JSON config payload, if any
+```
+
+`evaluate` is synchronous and cheap — it reads the already-fetched evaluation, so it is safe to
+call directly in a SwiftUI `body` or a `UITableView` cell, and there is no need to cache the
+result yourself.
+
+Each `evaluate` call records an impression. Impressions are summarised into a per-variant count
+rather than sent individually, so a flag read inside a `body` that re-runs on every state change
+does not post an event per frame.
+
+Use `peek(_:)` where a read does not mean the user was actually exposed to the feature — debug
+screens, diagnostics, admin panels:
+
+```swift
+let evaluation = featureflow.peek("new-checkout")   // records no impression
+```
+
+Impressions drive experiment results and stale-flag detection, so keeping non-exposures out of
+them matters.
+
+`allFeatures()` returns every feature and its evaluated variant, and also records no impressions.
+
+### Variant config values
+
+A variant can carry a [JSON config value](/manage-feature-variants#json-configuration-values), so
+a flag can change a value rather than a code path:
+
+```swift
+struct Limits: Decodable {
+    let maxUploads: Int
+}
+
+let limits = featureflow.evaluate("upload-limits").jsonValue(as: Limits.self)
+let maxUploads = limits?.maxUploads ?? 10   // always have a fallback
+```
+
+`jsonValue(as:)` returns `nil` when the resolved variant has no JSON set or the shape does not
+match, so always supply a fallback.
+
+## SwiftUI
+
+`FeatureflowStore` is an `ObservableObject` that republishes flag changes, so views update when a
+rollout changes underneath them without a relaunch. Create one at the app root and inject it as an
+environment object:
+
+```swift
+@main
+struct MyApp: App {
+    @StateObject private var flags = FeatureflowStore()
+
+    var body: some Scene {
+        WindowGroup {
+            ContentView()
+                .environmentObject(flags)
+                .task { await flags.start(apiKey: "sdk-js-env-YOUR_KEY", user: user) }
+        }
+    }
+}
+
+struct ContentView: View {
+    @EnvironmentObject private var flags: FeatureflowStore
+
+    var body: some View {
+        if !flags.isReady {
+            ProgressView()
+        } else if flags.isOn("new-checkout") {
+            NewCheckout()
+        } else {
+            LegacyCheckout()
+        }
+    }
+}
+```
+
+The store exposes `features`, `isReady`, `evaluate(_:)`, `isOn(_:)`, `variant(_:)`, `track(_:)`
+and `updateUser(_:)`. If your app constructs the client itself, call `adopt(_:)` instead of
+`start(...)` to publish from an existing client.
+
+`FeatureflowStore` requires iOS 14+, macOS 11+, tvOS 14+ or watchOS 7+ — slightly above the
+minimum the rest of the SDK supports. On older systems, use the client directly.
+
+:::note
+Gate flag-driven UI on `isReady`. Until the first evaluation has been applied — from the network
+or the cache — every flag returns its configured default, so rendering immediately means rendering
+one variant and swapping it a moment later.
+:::
+
+## UIKit
+
+Register a listener and reload when the variants change. `onFlagsChanged` is called on the main
+queue with the full current map:
+
+```swift
+final class CheckoutViewController: UIViewController {
+    private var token: FeatureflowClient.ListenerToken?
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        token = FeatureflowClient.shared?.onFlagsChanged { [weak self] _ in
+            self?.applyFlags()
+        }
+        applyFlags()
+    }
+}
+```
+
+Keep the token alive for as long as you want the callback — releasing it removes the listener.
+You can also call `token?.cancel()` explicitly, or `removeAllListeners()` on the client.
+
+## Users and targeting
+
+Targeting rules match on the attributes you supply, built with the fluent builder:
+
+```swift
+let user = FeatureflowUser.Builder("user-123")
+    .withAttribute("tier", "gold")
+    .withAttribute("age", 32)
+    .withAttribute("beta", true)
+    .withAttributes("roles", ["admin", "tester"])
+    .withSessionAttribute("dayofweek", .number(5))
+    .build()
+```
+
+Attributes may be strings, numbers, booleans, dates or arrays of those, and a rule matches when
+**any** element of an array matches. Session attributes are used for the evaluation but are not
+persisted against the user in Featureflow for later rule-building.
+
+:::caution
+**The user id must be stable for the same person across launches.**
+
+The id is what [percentage rollouts](/gradual-rollouts) bucket on. An id that changes per launch
+re-buckets the user every time, which turns "10% of users" into "10% of sessions" and makes a
+rollout look as though it is flapping on and off. Use your own account id.
+:::
+
+Omit the user entirely and the SDK generates an anonymous id and persists it, which keeps a
+signed-out user in a consistent bucket across launches.
+
+### On login and logout
+
+```swift
+await featureflow.updateUser(loggedInUser)   // re-evaluates everything
+```
+
+Call `updateUser` on login, on logout, and whenever an attribute used in targeting changes. Queued
+impressions are flushed first so they stay attributed to the user who generated them. The on-disk
+cache is keyed by API key *and* user id, so a new user is never served the previous user's values.
+
+On logout, call `resetAnonymousId()` to issue a fresh anonymous id, so the signed-out user does not
+stay in the buckets the account was in. It does not re-evaluate on its own — follow it with
+`updateUser`.
+
+### Sharing a user with your backend
+
+For an experiment that spans your app and your server, both sides must use the same id or they
+will disagree about which arm the user is in. For a signed-in user that is your own account id.
+For an anonymous one, send the id the SDK generated:
+
+```swift
+request.setValue(featureflow.anonymousId, forHTTPHeaderField: "X-Featureflow-Anonymous-Id")
+```
+
+## Goals
+
+Record a conversion with `track`:
+
+```swift
+featureflow.track("checkout-completed")
+featureflow.track("purchase", value: 49.95)
+featureflow.track("purchase", value: 49.95, data: ["plan": .string("pro")])
+```
+
+`value` is the metric — an order total, say — and `data` carries custom fields alongside it.
+
+Fire the goal where the conversion actually happens — after payment succeeds, not when the button
+is tapped — and for **every** arm of an experiment including the control, or the denominator is
+wrong.
+
+Events are batched, flushed on a timer, and flushed again when the app backgrounds or terminates.
+Backgrounding is the last reliable moment to send: a suspended app can be killed without further
+notice, taking unsent impressions and goals with it.
+
+## Configuration
+
+```swift
+var config = FeatureflowConfig()
+config.pollingInterval = 60
+config.defaultVariants = ["new-checkout": "off", "kill-switch-payments": "on"]
+config.logger = FeatureflowConsoleLogger(minimumLevel: .debug)
+
+let featureflow = await FeatureflowClient.initialize(
+    apiKey: "sdk-js-env-YOUR_KEY",
+    user: user,
+    config: config
+)
+```
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `pollingInterval` | `TimeInterval` | `60` | Foreground refresh interval, in seconds. This is your flag propagation latency, and the main driver of request volume. |
+| `backgroundPollingInterval` | `TimeInterval` | `0` | Polling interval while backgrounded. Zero disables it — see below. |
+| `refreshOnForeground` | `Bool` | `true` | Re-fetch when the app becomes active, regardless of the poll timer. |
+| `defaultVariants` | `[String: String]` | `[:]` | Variants served before the first fetch, and when offline or uncached. Anything unlisted is `off`. |
+| `useCache` | `Bool` | `true` | Persist the last evaluation to disk, so returning users skip the default-value frame. |
+| `offline` | `Bool` | `false` | No network calls at all; serves `defaultVariants`. For tests and previews. |
+| `disableEvents` | `Bool` | `false` | Stop sending impressions and goals while still fetching flags. |
+| `eventFlushInterval` | `TimeInterval` | `30` | Seconds between event flushes. |
+| `maxEventQueueSize` | `Int` | `1000` | Events held in memory between flushes; beyond this the oldest are dropped. |
+| `timeout` | `TimeInterval` | `10` | Request timeout in seconds. |
+| `logger` | `FeatureflowLogging?` | `nil` | Diagnostics sink. Nil by default — an SDK should not write to your console uninvited. |
+| `baseURL` | `URL` | `https://app.featureflow.io` | Where evaluations are fetched from. |
+| `eventsURL` | `URL` | `https://events.featureflow.io` | Where impression and goal events are posted. |
+
+Set `defaultVariants` for any flag whose wrong-way default would be harmful. It is the mobile
+equivalent of the failover variants the server SDKs register — and note the polarity: for a kill
+switch protecting a fragile dependency, the safe default is usually the *safe path*, which may
+mean the flag reads `on` by default.
+
+## Things that are different on mobile
+
+### Shipped binaries never update
+
+Someone will still be running the build you shipped today in two years, and it will keep
+evaluating whatever flags it reads. **Never delete a flag that a live build still reads** — archive
+it instead, and leave the `off` variant serving something safe. Check your minimum supported app
+version before cleaning up a mobile flag.
+
+### Background polling is off by default
+
+An iOS app without a background mode is suspended, and its timers do not fire, so a background
+poll interval would be a promise the platform does not keep. Setting `backgroundPollingInterval`
+only helps in apps that already run in the background for another reason. Flags refresh when the
+app returns to the foreground instead, which is what `refreshOnForeground` is for.
+
+A consequence: a long foreground session can hold a stale value for up to `pollingInterval`. Do
+not rely on a flag flipping mid-session for anything safety-critical.
+
+:::note
+The lifecycle integration is built on UIKit, so **foreground refresh does not fire on watchOS**.
+Polling still runs while a watch app is in the foreground, but treat values there as
+refreshed-on-open rather than continuously live.
+:::
+
+### Time-based rules use the device clock
+
+Rules that target `featureflow.date` or `featureflow.hourofday` are deliberately resolved
+on-device. That is what keeps a response identical for everyone in a bucket, and therefore
+cacheable at the CDN. Two consequences follow:
+
+- A scheduled rollout fires at each user's **local** time, not at one instant worldwide.
+- A device with a wrong clock gets the wrong answer.
+
+For a hard cutover at a specific moment, flip the flag in the dashboard rather than scheduling it
+with a time-based rule.
+
+## Testing
+
+Run the SDK offline with fixed variants — no network, fully deterministic:
+
+```swift
+var config = FeatureflowConfig()
+config.offline = true
+config.defaultVariants = ["new-checkout": "on"]
+
+let featureflow = await FeatureflowClient.initialize(apiKey: "test", config: config)
+XCTAssertTrue(featureflow.evaluate("new-checkout").isOn())
+```
+
+Write a test for **both** branches of every flag. An untested `off` branch is the usual reason a
+rollback fails.
+
+For integration tests against a fake server, `initialize` also accepts a `URLSession`, so you can
+inject one backed by a `URLProtocol` stub.
+
+## Next steps
+
+- [Gradual Rollouts](/gradual-rollouts) — Release to a percentage of users
+- [Targeting Features](/targeting-features) — Control who sees what
+- [Managing Variants](/manage-feature-variants) — Create custom feature states
+
+## License
+
+MIT

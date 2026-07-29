@@ -33,7 +33,7 @@ This is your unique key - used to identify the server when you call to get your 
 The code will look like this:
 
 ```javascript
-var featureflow = new Featureflow.Client({apiKey: 'srv-env-23456abc...'});
+var featureflow = new Featureflow.Client({apiKey: 'sdk-srv-env-23456abc...'});
 
 featureflow.ready(function(){
     if (featureflow.evaluate('example-feature').isOn()) {

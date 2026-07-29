@@ -1,0 +1,483 @@
+---
+title: Ruby SDK
+sidebar_label: Ruby SDK
+slug: /ruby-sdk
+sidebar_position: 5
+---
+
+Get your Featureflow account at [featureflow.io](http://www.featureflow.io)
+
+GitHub: https://github.com/featureflow/featureflow-ruby-sdk
+
+The Featureflow SDK for Ruby and Ruby on Rails. It is a **server-side** SDK: it downloads the
+rules for every feature in an environment and evaluates them in your own process, so an
+evaluation is a local hash computation rather than a network call.
+
+## Installation
+
+Add the gem to your `Gemfile`:
+
+```ruby
+gem 'featureflow'
+```
+
+Then:
+
+```bash
+bundle install
+```
+
+Requiring `featureflow` exposes `Featureflow::Client`, `Featureflow::UserBuilder` and
+`Featureflow::Feature`. In Rails, Bundler requires it for you.
+
+## Getting your server key
+
+Go to **Environments → (your environment) → API Keys** in the Featureflow dashboard and copy the
+**Server SDK key**. It starts with `sdk-srv-env-`.
+
+:::caution
+**A server key is a secret. Treat it like a database password.**
+
+It downloads your entire ruleset — every targeting rule, every segment, every attribute name you
+target on. That is exactly what makes local evaluation fast, and exactly why the key must never
+reach a browser, a mobile app, or anything else you ship to a user. Keep it in an environment
+variable or your secrets store, not in the repository.
+
+Client keys (`sdk-js-env-`) are the opposite: they are public by design, because they only ever
+return already-evaluated values for one user. If a server key has ever been exposed, rotate it.
+:::
+
+## Quick start
+
+```ruby
+require 'featureflow'
+
+Featureflow.configure(api_key: 'sdk-srv-env-YOUR_API_KEY')
+
+user = Featureflow::UserBuilder.new('user-123')
+                               .with_attributes(country: 'US', tier: 'gold')
+                               .build
+
+if Featureflow.evaluate('new-checkout', user).on?
+  # the new checkout
+else
+  # the old one
+end
+```
+
+## Creating the client
+
+Pass your server key straight to the constructor:
+
+```ruby
+featureflow = Featureflow::Client.new(api_key: 'sdk-srv-env-YOUR_API_KEY')
+```
+
+Any option from the [Configuration](#configuration) table can go in that hash — `with_features`,
+`disable_events`, `logger` and the rest. An option the SDK does not recognise raises
+`ArgumentError` rather than being quietly ignored, so a misspelt `endpoint` cannot leave you
+polling production by accident.
+
+Set `FEATUREFLOW_SERVER_KEY` in the environment and you can leave the hash out altogether — the
+configuration reads it on first use:
+
+```bash
+export FEATUREFLOW_SERVER_KEY=sdk-srv-env-YOUR_API_KEY
+```
+
+```ruby
+featureflow = Featureflow::Client.new   # picks up FEATUREFLOW_SERVER_KEY
+```
+
+For a shared client, configure once and let the module hold it: `Featureflow.client` builds a
+client from the global configuration the first time it is called and memoises it, and
+`Featureflow.evaluate(key, user)` is a shortcut for `Featureflow.client.evaluate(key, user)`.
+
+```ruby
+Featureflow.configure(api_key: 'sdk-srv-env-YOUR_API_KEY')
+
+featureflow = Featureflow.client
+```
+
+To keep a client outside the global singleton — a second environment in a script, say — build a
+`Featureflow::Configuration` and pass that in instead:
+
+```ruby
+config = Featureflow::Configuration.new
+config.api_key = ENV.fetch('FEATUREFLOW_SERVER_KEY')
+config.logger  = Rails.logger
+
+featureflow = Featureflow::Client.new(config)
+```
+
+:::caution Treat the client as a singleton
+Create **one** client per process and share it. Each client opens its own polling thread and its
+own event queue, so a client per request means a features request per request — the opposite of
+what a server-side SDK is for. `Featureflow.client` gives you that shared instance for free.
+:::
+
+Construction fetches the ruleset **synchronously** before it returns, then refreshes it on a
+background thread every 10 seconds using a conditional request, so an unchanged ruleset costs a
+`304`. There is no `ready` callback to wait on — once `Featureflow.client` has returned, flags are
+live.
+
+:::note
+The client never raises because of a bad key or an unreachable backend — it logs the failure and
+carries on serving failover variants, because a flag service being down must not stop your
+application from booting. A mistyped key therefore looks like "every flag is off", not like a
+crash. The default logger writes to `STDOUT` at `WARN`, so check your logs for
+`request for features failed with response status 401` before debugging your rules.
+:::
+
+## Evaluating features
+
+`evaluate` returns a `Featureflow::Evaluate`, which resolves the variant immediately:
+
+```ruby
+evaluation = featureflow.evaluate('checkout-layout', user)
+
+evaluation.on?            # true when the variant is 'on'
+evaluation.off?           # true when the variant is 'off'
+evaluation.is? 'wizard'   # true for any named variant
+evaluation.value          # 'wizard'
+```
+
+`is_on?` and `is_off?` are aliases of `on?` and `off?`.
+
+:::note
+`on?`, `off?` and `is?` each record an evaluation event as a side effect — including repeat calls
+on the same `Evaluate` object. `value` records nothing. Use `value` for reads that are not real
+exposures, such as an admin screen, a health check or a log line, so that experiment results and
+stale-flag detection are not skewed by them.
+:::
+
+Events are queued in memory and posted in batches every 10 seconds (or immediately once 10,000
+have queued up). Sending is fire-and-forget: failures are logged, never raised.
+
+## Defining users
+
+Targeting rules and percentage rollouts both need a user. Build one with
+`Featureflow::UserBuilder`:
+
+```ruby
+user = Featureflow::UserBuilder.new('user-123')
+                               .with_attributes(country: 'US',
+                                                tier: 'gold',
+                                                age: 32,
+                                                beta: true,
+                                                roles: %w[admin tester])
+                               .build
+
+featureflow.evaluate('new-checkout', user).on?
+```
+
+`with_attributes` takes a hash and can be called more than once; later calls merge into earlier
+ones. Keys are converted to strings, so `:tier` and `'tier'` are the same attribute.
+
+Attribute values may be strings, numbers, `true`/`false`, or arrays of those — anything else
+raises `ArgumentError`. A rule matches when **any** element of an array matches. There is no date
+type: pass dates as ISO-8601 strings, which the `before` and `after` operators parse and compare
+as instants, so offsets like `+04:00` compare correctly against `Z`.
+
+Where you have no attributes to send, a bare string id works and is wrapped for you:
+
+```ruby
+featureflow.evaluate('new-checkout', 'user-123').on?
+```
+
+:::caution
+**The user id must be stable for the same person.**
+
+Percentage rollouts bucket on `SHA-1` of the salt, the feature key and the user id, so the id is
+what decides which side of a 10% rollout someone lands on. An id that changes between requests —
+a session id, a request id, a `SecureRandom` fallback — re-buckets the same person constantly,
+which turns "10% of users" into "10% of requests" and makes a rollout look as though it is
+flapping. Use your own account id, and use the same id everywhere that person is evaluated: your
+web app, your background jobs, and any other SDK.
+:::
+
+Three attributes are injected for you at evaluation time, so rules can target them without your
+passing anything:
+
+| Attribute | Value |
+|---|---|
+| `featureflow.user.id` | The user id, so rules can target individuals |
+| `featureflow.date` | The current time as an ISO-8601 UTC timestamp |
+| `featureflow.hourofday` | The current hour, in the **server's local time zone** |
+
+Because they are resolved on each evaluation, a date or hour-of-day rule matches the moment the
+flag is read. Note the mismatch in the last two: `featureflow.date` is UTC while
+`featureflow.hourofday` follows the process time zone, so set `TZ` deliberately on hosts that run
+hour-of-day rules.
+
+## Pre-registering features and failover variants
+
+Register the features a release depends on, together with the variant to serve when Featureflow
+cannot be reached:
+
+```ruby
+Featureflow.configure(
+  api_key: 'sdk-srv-env-YOUR_API_KEY',
+  with_features: [
+    Featureflow::Feature.create('new-checkout', 'off'),
+    Featureflow::Feature.create('kill-switch-payments', 'on'),
+    Featureflow::Feature.create('legacy-report')            # no variant given — defaults to 'off'
+  ]
+)
+```
+
+The failover variant is what the SDK serves when it has no rules for a feature: the first fetch
+failed, the key is wrong, the network is down, or the feature does not exist in that environment
+yet. Without a registration, an unknown feature evaluates to `'off'`.
+
+**Set each failover to the safe side, not to the new side.** For a feature that guards new code,
+that is `'off'`. For a kill switch that protects a fragile dependency, the safe value is usually
+the one that keeps the dependency in use — often `'on'`. Read each registration as "what should
+happen if Featureflow disappears during this release?"
+
+Feature keys and variant keys may contain lowercase letters, digits, hyphens and underscores only;
+anything else raises `ArgumentError` at start-up.
+
+Registrations are also sent to Featureflow when the client starts, which is how a feature can
+appear in your dashboard before anyone has evaluated it. Setting `disable_events: true` turns that
+off along with all other event traffic, and the registrations then act purely as local failovers.
+
+## Rails
+
+### The generator
+
+```bash
+bundle exec rails generate featureflow sdk-srv-env-YOUR_API_KEY
+```
+
+The key argument is required and is validated against `sdk-srv-env-` followed by 32 hexadecimal
+characters — a mistyped key stops the generator rather than producing an initializer that fails at
+run time. The generator writes `config/initializers/featureflow.rb`:
+
+```ruby
+Featureflow.configure(
+  api_key: "sdk-srv-env-YOUR_API_KEY"
+)
+```
+
+:::note
+That initializer holds the key in source control. For anything beyond a spike, edit it to read the
+key from the environment or from Rails credentials — or skip the generator, set
+`FEATUREFLOW_SERVER_KEY`, and let the SDK pick it up with no initializer at all:
+
+```ruby
+Featureflow.configure do |config|
+  config.api_key = ENV.fetch('FEATUREFLOW_SERVER_KEY')
+  config.logger  = Rails.logger
+end
+```
+:::
+
+### Evaluating in a controller
+
+```ruby
+class CheckoutController < ApplicationController
+  def show
+    user = Featureflow::UserBuilder.new(current_user.id.to_s)
+                                   .with_attributes(plan: current_user.plan,
+                                                    country: current_user.country)
+                                   .build
+
+    if Featureflow.evaluate('new-checkout', user).on?
+      render :new_checkout
+    else
+      render :show
+    end
+  end
+end
+```
+
+`UserBuilder` requires a non-empty `String`, so call `.to_s` on numeric primary keys — and keep
+that conversion consistent, since `42` and `'42'` would otherwise be two different buckets.
+
+Build the client once at boot rather than on the first request, so no request pays for the initial
+fetch and two threads cannot race to memoise it. Adding `Featureflow.client` to the end of your
+initializer is enough — unless your web server preloads the application, in which case see
+*Forking web servers* below.
+
+### The controller helper
+
+The Railtie also adds a `featureflow` helper method to `ActionController::Base`. It returns a
+`Featureflow::RailsClient` bound to the current request, and takes the same arguments as
+`Featureflow.evaluate` — a user id, or a user built with `UserBuilder`:
+
+```ruby
+class CheckoutController < ApplicationController
+  def show
+    render featureflow.evaluate('new-checkout', current_user.id.to_s).on? ? :new_checkout : :show
+  end
+end
+```
+
+The helper adds two attributes from the request before evaluating, so rules can target them
+without your passing anything:
+
+| Attribute | Value |
+|---|---|
+| `featureflow.ip` | The client IP address (`request.remote_ip`) |
+| `featureflow.url` | The full request URL (`request.original_url`) |
+
+Attributes you set yourself win, so you can override either one. The helper evaluates through the
+shared `Featureflow.client`, so it costs no extra polling thread.
+
+## Forking web servers (Puma, Unicorn)
+
+`fork()` copies only the thread that called it. A worker forked from a preloaded master therefore
+inherits the feature cache but **not** the thread that refreshes it, so its flags freeze at the
+values the master held at fork time and never change again — and if the master's first fetch
+failed, every flag stays on its failover variant for the life of that worker. Nothing errors, which
+is what makes this hard to spot: the flags simply stop responding to the dashboard.
+
+Rebuild the polling thread in the after-fork hook. `Client#reload` stops any inherited polling
+client and starts a fresh one:
+
+```ruby
+# config/puma.rb
+preload_app!
+
+on_worker_boot do
+  Featureflow.client.reload
+end
+```
+
+```ruby
+# config/unicorn.rb
+after_fork do |server, worker|
+  Featureflow.client.reload
+end
+```
+
+`Featureflow.client` builds the client if the master never did, so the same one-liner is correct
+whether or not your initializer warms it. Any preloading server needs this — including Phusion
+Passenger with smart spawning. Without `preload_app!`, each worker boots the application itself and
+no hook is needed.
+
+The event-flushing thread recovers on its own: it is restarted the next time an event is queued.
+Only polling needs the hook.
+
+## Background jobs
+
+A job runs in a different process from the request that enqueued it, so it must be given the same
+user id — otherwise the two bucket independently, and a user who saw the new checkout can be sent
+the old receipt. Put the id on the job payload and rebuild the user in `perform`:
+
+```ruby
+class SendReceiptJob
+  include Sidekiq::Job
+
+  def perform(user_id, plan)
+    user = Featureflow::UserBuilder.new(user_id)
+                                   .with_attributes(plan: plan)
+                                   .build
+
+    if Featureflow.evaluate('new-receipt-template', user).on?
+      ReceiptMailer.with(user_id: user_id).new_template.deliver_now
+    else
+      ReceiptMailer.with(user_id: user_id).legacy.deliver_now
+    end
+  end
+end
+
+# enqueue with the id, not the object
+SendReceiptJob.perform_async(current_user.id.to_s, current_user.plan)
+```
+
+Carry the attributes your rules target as well, or reload the user from the database in `perform`.
+A job that evaluates with the right id but without, say, `plan` will miss any rule that targets
+`plan`, and will quietly fall through to a later rule.
+
+Sidekiq runs its own process with its own client, which your Rails initializer configures in the
+usual way. Sidekiq is threaded rather than forking, so it needs no after-fork hook — but if you run
+it under a process manager that preloads and forks, apply the same `reload` treatment.
+
+## Configuration
+
+Set options with a hash or a block:
+
+```ruby
+Featureflow.configure do |config|
+  config.api_key        = ENV.fetch('FEATUREFLOW_SERVER_KEY')
+  config.disable_events = Rails.env.test?
+  config.logger         = Rails.logger
+end
+```
+
+| Option | Default | Description |
+|---|---|---|
+| `api_key` | `ENV['FEATUREFLOW_SERVER_KEY']` | Your server environment key. |
+| `endpoint` | `https://app.featureflow.io` | Where feature rules are fetched from. |
+| `event_endpoint` | `https://events.featureflow.io` | Where registrations and evaluation events are posted. |
+| `disable_events` | `false` | Stop all event traffic — no feature registration, no evaluation events. |
+| `with_features` | `[]` | Pre-registered features and their failover variants. |
+| `logger` | `Logger.new(STDOUT)` at `WARN` | Where the SDK writes diagnostics. Point it at `Rails.logger`. |
+
+The poll interval is fixed at 10 seconds and is not configurable, so a change made in the dashboard
+reaches a running process within about that long. Do not build a hard cutover on a flag flipping at
+an exact instant.
+
+## Goals and JSON configuration values
+
+:::note
+Two capabilities available in other Featureflow SDKs are **not yet in the Ruby SDK**:
+
+- **Goal tracking.** There is no `track` method — conversions cannot be recorded from Ruby. If you
+  are measuring an experiment that Ruby takes part in, record the goal from an SDK that supports it
+  (JavaScript, React, Node.js, Java, iOS or Android) using the same user id, so the conversions
+  line up with the evaluations.
+- **JSON configuration values.** `Evaluate` exposes `value` only. A variant that carries a
+  [JSON config value](/manage-feature-variants#json-configuration-values) still evaluates correctly
+  and returns its variant key, but the JSON payload cannot be read from Ruby.
+
+See [SDK Compatibility](/sdk-compatibility) for the full matrix.
+:::
+
+## Testing
+
+There is no offline mode: constructing a client always makes one request to `endpoint` and then
+polls. Two approaches work well.
+
+**Keep the SDK out of unit tests.** Put flag reads behind a method of your own and stub that — it
+is faster, and it keeps every test free of HTTP:
+
+```ruby
+module FeatureGate
+  def self.on?(key, user)
+    Featureflow.evaluate(key, user).on?
+  end
+end
+
+allow(FeatureGate).to receive(:on?).with('new-checkout', anything).and_return(true)
+```
+
+**Or stub the transport** with WebMock or VCR, and register failover variants so that anything you
+have not stubbed resolves to a known value rather than to whatever a real environment says today:
+
+```ruby
+Featureflow.configure(
+  api_key: 'sdk-srv-env-TEST_KEY',
+  disable_events: true,
+  with_features: [Featureflow::Feature.create('new-checkout', 'on')]
+)
+```
+
+Set `disable_events: true` in the test environment either way, so test runs do not post
+registrations and evaluation events to your real environment.
+
+Write a test for **both** branches of every flag. An untested `off` branch is the usual reason a
+rollback fails.
+
+## Next steps
+
+- [Gradual Rollouts](/gradual-rollouts) — Release to a percentage of users
+- [Targeting Features](/targeting-features) — Control who sees what
+- [Managing Variants](/manage-feature-variants) — Create custom feature states
+- [SDK Compatibility](/sdk-compatibility) — Which capabilities each SDK supports
+
+## License
+
+Apache-2.0

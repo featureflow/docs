@@ -25,7 +25,7 @@ npm install
 Edit `helloworld.js` and replace the placeholder with your **Server Environment API Key**. You can find this under the API Keys link on your project page.
 
 ```javascript
-const featureflow = new Featureflow.Client({ apiKey: 'srv-env-YOUR_API_KEY' });
+const featureflow = new Featureflow.Client({ apiKey: 'sdk-srv-env-YOUR_API_KEY' });
 
 featureflow.ready(function() {
     if (featureflow.evaluate('example-feature').isOn()) {

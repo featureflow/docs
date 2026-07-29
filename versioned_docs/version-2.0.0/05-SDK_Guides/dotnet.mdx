@@ -1,0 +1,471 @@
+---
+title: .NET SDK
+sidebar_label: .NET SDK
+slug: /dotnet-sdk
+sidebar_position: 6
+---
+
+Get your Featureflow account at [featureflow.io](http://www.featureflow.io)
+
+GitHub: https://github.com/featureflow/featureflow-dotnet-client
+
+The Featureflow SDK for .NET. It is a **server-side** SDK: it downloads your rules and evaluates
+them in your own process, so an evaluation is an in-memory lookup with no network call on the
+request path.
+
+## Installation
+
+```bash
+dotnet add package Featureflow
+```
+
+Or from the Package Manager console:
+
+```
+Install-Package Featureflow
+```
+
+Everything lives in the `Featureflow.Client` namespace:
+
+```csharp
+using Featureflow.Client;
+```
+
+### Supported frameworks
+
+The package targets .NET Framework 4.5, .NET Standard 1.3 and .NET Standard 2.0, so it runs on
+.NET Framework 4.5+, .NET Core 2.0+ and .NET 5 and later. Its only third-party dependency is
+`Newtonsoft.Json`.
+
+## Getting your server key
+
+Go to **Environments → (your environment) → API Keys** in the Featureflow dashboard and copy the
+**Server Environment API key**. It starts with `sdk-srv-env-`.
+
+:::caution
+**A `sdk-srv-env-` key is a secret. Treat it like a database password.**
+
+This SDK evaluates rules locally, which means the key downloads your **entire ruleset** — every
+targeting rule, every audience condition and every attribute name you target on. Anyone holding
+the key can read all of it.
+
+So it must never reach a browser, a mobile app, a desktop app, or a client-side Blazor WebAssembly
+build — anything shipped to a user is readable by that user. For those, use a `sdk-js-env-` client
+key, which is public by design because it only ever returns already-evaluated values for one user.
+Blazor Server is fine: the code runs on your server.
+
+Keep the key in configuration or a secret store, not in source. If a server key has ever been
+shipped to a client, rotate it.
+:::
+
+## Quick start
+
+```csharp
+using Featureflow.Client;
+
+var client = await FeatureflowClientFactory.CreateAsync("sdk-srv-env-YOUR_KEY");
+
+var user = new User("user-123");
+user.WithAttribute("tier", "gold");
+
+if (client.Evaluate("new-checkout", user).IsOn())
+{
+    // the new checkout
+}
+else
+{
+    // the old one
+}
+```
+
+Create **one** client for the lifetime of the process and share it. Each client opens its own
+connection to Featureflow and holds its own copy of the ruleset, so a second instance doubles
+your request volume and buys you nothing.
+
+`IFeatureflowClient` implements `IDisposable`. Dispose it at shutdown to close the connection and
+stop the background timers — a DI container does this for you for a registered singleton.
+
+## Creating the client
+
+`FeatureflowClientFactory` has synchronous and asynchronous overloads, each accepting an optional
+list of features (for failover variants) and an optional configuration:
+
+```csharp
+IFeatureflowClient Create(string apiKey);
+IFeatureflowClient Create(string apiKey, IEnumerable<Feature> defaultFeatures);
+IFeatureflowClient Create(string apiKey, FeatureflowConfig config);
+IFeatureflowClient Create(string apiKey, IEnumerable<Feature> defaultFeatures, FeatureflowConfig config);
+
+Task<IFeatureflowClient> CreateAsync(string apiKey);
+Task<IFeatureflowClient> CreateAsync(string apiKey, IEnumerable<Feature> defaultFeatures);
+Task<IFeatureflowClient> CreateAsync(string apiKey, FeatureflowConfig config);
+Task<IFeatureflowClient> CreateAsync(string apiKey, IEnumerable<Feature> defaultFeatures, FeatureflowConfig config);
+```
+
+Each `CreateAsync` overload also takes an optional `CancellationToken`.
+
+### Prefer CreateAsync at startup
+
+Both forms wait for the first ruleset to arrive before handing you a client, but they wait
+differently: `Create` **blocks the calling thread** until initialisation finishes, while
+`CreateAsync` yields it. On an async entry point — an ASP.NET Core `Program.cs`, a hosted
+service, a Lambda handler — always use `CreateAsync`. Blocking a thread pool thread on a
+network round trip during start-up is how a cold start turns into a timeout.
+
+:::caution
+The wait is bounded by `ConnectionTimeout` (30 seconds by default). If the ruleset has not arrived
+by then, **creation still succeeds** and returns a usable client — one whose cache is empty, so
+every flag serves its [failover variant](#failover-variants) until the connection is established.
+
+That is deliberate: Featureflow being unreachable must never stop your application from starting.
+But it does mean the failover variants are what runs in that window, which is the reason to set
+them rather than accept the implicit `off`.
+:::
+
+In a short-lived process — an AWS Lambda function, a console job, a scheduled task — `await
+CreateAsync` before you evaluate anything, and keep the client alive across invocations where the
+runtime allows it (a static field on a Lambda class survives warm starts). A process that creates
+a client and evaluates a flag milliseconds later has not given the ruleset time to arrive.
+
+## ASP.NET Core
+
+Register the client as a **singleton**, built once at start-up:
+
+```csharp
+using Featureflow.Client;
+
+var builder = WebApplication.CreateBuilder(args);
+
+var featureflow = await FeatureflowClientFactory.CreateAsync(
+    builder.Configuration["Featureflow:ServerKey"],
+    new List<Feature>
+    {
+        new Feature { Key = "new-checkout", FailoverVariant = "off" },
+        new Feature { Key = "payments-kill-switch", FailoverVariant = "on" },
+    });
+
+builder.Services.AddSingleton<IFeatureflowClient>(featureflow);
+```
+
+:::caution
+**Do not register the client as scoped or transient.**
+
+A scoped registration constructs a client per request. Each one opens its own connection, downloads
+the whole ruleset again, and waits up to `ConnectionTimeout` before its first evaluation — so every
+request pays a start-up cost, and under load you will exhaust connections rather than serve flags.
+The client is thread-safe and designed to be shared.
+:::
+
+### Building the user per request
+
+The *client* is a singleton; the *user* is not. Build a `User` for each request from the current
+`ClaimsPrincipal` with a small scoped accessor:
+
+```csharp
+public class FeatureflowUserAccessor
+{
+    private readonly IHttpContextAccessor _httpContextAccessor;
+
+    public FeatureflowUserAccessor(IHttpContextAccessor httpContextAccessor)
+    {
+        _httpContextAccessor = httpContextAccessor;
+    }
+
+    public User Current()
+    {
+        var principal = _httpContextAccessor.HttpContext?.User;
+        var id = principal?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        var user = new User(id ?? "anonymous");
+
+        var email = principal?.FindFirst(ClaimTypes.Email)?.Value;
+        if (email != null)
+        {
+            user.WithAttribute("email", email);
+        }
+
+        var roles = principal?.FindAll(ClaimTypes.Role).Select(c => (object)c.Value).ToList();
+        if (roles != null && roles.Count > 0)
+        {
+            user.WithAttribute("role", roles);
+        }
+
+        return user;
+    }
+}
+```
+
+Register it alongside the HTTP context accessor:
+
+```csharp
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<FeatureflowUserAccessor>();
+```
+
+Then inject both into a controller or minimal API endpoint:
+
+```csharp
+app.MapGet("/checkout", (IFeatureflowClient flags, FeatureflowUserAccessor users) =>
+{
+    var user = users.Current();
+    return flags.Evaluate("new-checkout", user).IsOn()
+        ? Results.Ok(new { layout = "wizard" })
+        : Results.Ok(new { layout = "classic" });
+});
+```
+
+Build a fresh `User` per request rather than mutating a shared one. `WithAttribute` adds to a
+dictionary and throws if the same key is supplied twice, and a `User` reused across requests would
+carry the previous request's attributes into the next evaluation.
+
+## Users and targeting
+
+Targeting rules match on the attributes you supply:
+
+```csharp
+var user = new User("user-123");
+user.WithAttribute("tier", "gold");
+user.WithAttribute("age", 32);
+user.WithAttribute("signup_date", new DateTime(2024, 1, 1));
+user.WithAttribute("role", new List<object> { "admin", "beta_tester" });
+user.WithSessionAttribute("dayofweek", 5);
+```
+
+The methods return `void` rather than the user, so unlike the Java SDK they do not chain — call
+them as separate statements.
+
+Attribute values may be `string`, `DateTime`, any numeric type (`int`, `long`, `double` and so
+on), or an `IEnumerable` of any of those. Pass a list as `List<object>` so it binds to the list
+overload rather than being stored as a single opaque value.
+
+:::note
+When an attribute holds several values, a rule matches if **any** one of them matches. A user with
+`role` of `["admin", "beta_tester"]` matches a rule targeting either.
+
+Attributes sent with an evaluation are stored against the user in Featureflow, so they become
+available for autocompletion when you build rules in the dashboard.
+:::
+
+:::caution
+**The user id must be stable for the same person over time.**
+
+The id is what [percentage rollouts](/gradual-rollouts) bucket on — the SDK hashes it to decide
+which side of a 10% split the user falls. An id that changes between requests re-buckets the user
+each time, turning "10% of users" into "10% of requests", so the same person flips between variants
+and the rollout looks as though it is flapping. Use your own account or customer id, never a
+session id or a request id.
+:::
+
+### Session attributes
+
+`WithSessionAttribute` values are used for the evaluation but are not stored against the user in
+Featureflow. Use them for things that are true only right now — the current basket total, the
+device the request came from — that you do not want accumulating on the user's profile.
+
+### Bucketing on something other than the id
+
+Set `BucketKey` to split on a different value while keeping the id for targeting and reporting —
+bucketing on an account id, for example, so every member of a team gets the same variant:
+
+```csharp
+var user = new User("user-123") { BucketKey = "account-456" };
+```
+
+### Evaluating without a user
+
+The user argument can be omitted:
+
+```csharp
+client.Evaluate("maintenance-mode").IsOn();
+```
+
+This evaluates against an anonymous user whose id is the literal string `ANONYMOUS`. Rules that
+target attributes will not match, and — because bucketing is a hash of the id — a percentage
+rollout resolves the same way for every such call, making it effectively all-or-nothing. Use it
+for flags with no targeting: kill switches, operational toggles, background jobs with no user
+context.
+
+## Evaluating features
+
+```csharp
+var evaluation = client.Evaluate("checkout-layout", user);
+
+evaluation.IsOn();          // variant == "on"
+evaluation.IsOff();         // variant == "off"
+evaluation.Is("wizard");    // any variant
+evaluation.Value();         // "wizard"
+```
+
+`IsOn()` and `IsOff()` are shorthands for the two variants nearly every feature has. `Is(variant)`
+compares the resolved variant key exactly and is case-sensitive, so match the key as written in the
+dashboard.
+
+Evaluation is a local, in-memory operation against the cached ruleset, so it is cheap enough to
+call inline wherever you need it — no request-scoped caching of your own required.
+
+`EvaluateAll()` (or `EvaluateAll(user)`) returns a `Dictionary<string, Evaluate>` of every feature
+in the environment, which is useful for a diagnostics endpoint that shows what a given user
+currently resolves to.
+
+:::note
+Reading a result records an impression, which is what drives the statistics and stale-flag
+detection in the dashboard. Impressions are queued in memory and posted in batches every 30
+seconds, so evaluating in a hot path does not mean an HTTP call per evaluation.
+:::
+
+## Failover variants
+
+If a feature is not in the cache when you evaluate it — Featureflow was unreachable at start-up,
+the connection dropped, or the flag does not exist in that environment — the SDK serves that
+feature's **failover variant**. The implicit failover is `off`. Declare your own by passing a
+`List<Feature>` when you create the client:
+
+```csharp
+var client = await FeatureflowClientFactory.CreateAsync(
+    "sdk-srv-env-YOUR_KEY",
+    new List<Feature>
+    {
+        new Feature { Key = "new-checkout", FailoverVariant = "off" },
+        new Feature { Key = "payments-kill-switch", FailoverVariant = "on" },
+        new Feature { Key = "checkout-layout", FailoverVariant = "classic" },
+    });
+```
+
+Set each one to the **safe** side, and note that safe is not always `off`. For a flag guarding a
+new feature, `off` is safe. For a kill switch whose `on` variant means "use the well-tested payment
+path", `on` is safe — leaving it at the implicit `off` would mean an outage at Featureflow silently
+routes traffic down the experimental path, which is exactly backwards.
+
+Because this list is also what runs during the start-up window described above, it is worth
+declaring for any flag where the wrong answer costs you something.
+
+## Configuration
+
+`new FeatureflowConfig()` gives you the defaults — streaming, a 30-second connection timeout, and
+the standard Featureflow hosts — and is the same configuration a client gets when you do not pass
+one. To change any of it, build the config with `FeatureflowConfigBuilder`; the properties are
+read-only from outside the SDK, so the builder is how you set them:
+
+```csharp
+var config = new FeatureflowConfigBuilder()
+    .WithConnectionTimeout(TimeSpan.FromSeconds(10))
+    .WithGetFeaturesMethod(GetFeaturesMethod.Polling)
+    .Build();
+
+var client = await FeatureflowClientFactory.CreateAsync("sdk-srv-env-YOUR_KEY", config);
+```
+
+| Method | Default | Description |
+|---|---|---|
+| `WithConnectionTimeout(TimeSpan)` | 30 seconds | Timeout for REST calls, and the longest start-up will wait for the first ruleset. |
+| `WithGetFeaturesMethod(GetFeaturesMethod)` | `Sse` | How updates arrive — see below. |
+| `WithOffline(bool)` | `false` | No network calls at all; every flag serves its failover variant. For tests. |
+| `WithBaseUri(uri)` | `https://app.featureflow.io` | Where the ruleset is fetched from when polling. |
+| `WithStreamBaseUri(uri)` | `https://rtm.featureflow.io` | Where the update stream is opened when streaming. |
+
+Impression events are always posted to `https://events.featureflow.io`; that address is not
+configurable.
+
+### Streaming or polling
+
+`GetFeaturesMethod.Sse` is the default. The SDK holds a server-sent events connection open and
+receives changes as they are made, so a flag flipped in the dashboard reaches your process in about
+a second. It reconnects on its own if the connection drops.
+
+`GetFeaturesMethod.Polling` re-fetches the whole ruleset every 30 seconds instead, using an ETag so
+an unchanged ruleset costs a `304` rather than a payload. Choose it when a proxy or firewall on the
+path will not keep a long-lived streaming connection open. The trade-off is propagation latency:
+up to 30 seconds instead of about a second.
+
+## Reacting to changes
+
+The client raises events when the ruleset changes, which is useful for logging a flip or
+invalidating a cache derived from a flag:
+
+```csharp
+client.FeatureUpdated += (sender, args) =>
+    logger.LogInformation("Feature updated: {Key}", args.FeatureKey);
+
+client.FeatureDeleted += (sender, args) =>
+    logger.LogInformation("Feature deleted: {Key}", args.FeatureKey);
+```
+
+Handlers run on the SDK's own connection thread, so keep them quick — blocking work in a handler
+delays the next update from being applied.
+
+## Testing
+
+Depend on the `IFeatureflowClient` interface everywhere and substitute a mock in unit tests. Never
+construct a real client in a unit test: it opens a network connection, waits for a ruleset, and
+makes the test's outcome depend on the state of a flag in a live environment.
+
+With Moq:
+
+```csharp
+var flags = new Mock<IFeatureflowClient>();
+flags.Setup(f => f.Evaluate("new-checkout", It.IsAny<User>()))
+     .Returns(new Evaluate(null, new User("test-user"), "on"));
+
+var sut = new CheckoutService(flags.Object);
+```
+
+`Evaluate` has a public constructor that takes a feature control, a user and a failover variant.
+Passing `null` for the control makes it resolve straight to the failover variant you supply, which
+gives you a real `Evaluate` returning a variant of your choosing without any rule plumbing. The
+same pattern works with NSubstitute:
+
+```csharp
+var flags = Substitute.For<IFeatureflowClient>();
+flags.Evaluate("new-checkout", Arg.Any<User>())
+     .Returns(new Evaluate(null, new User("test-user"), "off"));
+```
+
+For an integration test that exercises the real client without a network, run it offline. Every
+flag then resolves to its failover variant, so the `List<Feature>` becomes the set of variants
+under test:
+
+```csharp
+var config = new FeatureflowConfigBuilder().WithOffline(true).Build();
+
+var client = await FeatureflowClientFactory.CreateAsync(
+    "offline",
+    new List<Feature> { new Feature { Key = "new-checkout", FailoverVariant = "on" } },
+    config);
+
+Assert.True(client.Evaluate("new-checkout").IsOn());
+```
+
+Write a test for **both** branches of every flag. An untested `off` branch is the usual reason a
+rollback does not work when you need it to.
+
+## Current limitations
+
+:::note
+**Goal tracking is not available in this SDK.** There is no `Track` method on
+`IFeatureflowClient`, so conversions cannot be recorded from .NET and this SDK cannot supply the
+metric side of an experiment. If you are running an A/B test that a .NET service participates in,
+record the goal from a client-side SDK — JavaScript, iOS or Android — or from a Node.js or Java
+service. See [SDK Compatibility](/sdk-compatibility).
+:::
+
+:::note
+**[JSON configuration values](/manage-feature-variants#json-configuration-values) are not
+supported.** A variant carrying a JSON payload still evaluates correctly — `Value()` returns the
+variant key as usual — but there is no method to read the payload. See
+[SDK Compatibility](/sdk-compatibility).
+:::
+
+The SDK also has no equivalent of the Java SDK's `saveUser(false)`: attributes sent with an
+evaluation are always stored against the user in Featureflow. Use `WithSessionAttribute` for
+values you would rather not have persisted.
+
+## Next steps
+
+- [Gradual Rollouts](/gradual-rollouts) — Release to a percentage of users
+- [Targeting Features](/targeting-features) — Control who sees what
+- [Managing Variants](/manage-feature-variants) — Create custom feature states
+- [SDK Compatibility](/sdk-compatibility) — Which capabilities each SDK supports
+
+## License
+
+Apache-2.0

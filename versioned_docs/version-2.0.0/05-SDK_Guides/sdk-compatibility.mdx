@@ -13,9 +13,19 @@ Always check this table before relying on a feature in production if you're not 
 
 ## Feature Compatibility Matrix
 
-| Feature | Node.js SDK | JavaScript SDK | React SDK | Java SDK | Go SDK | Python SDK | Ruby SDK | .NET SDK | React Native SDK |
-|---|---|---|---|---|---|---|---|---|---|
-| [JSON Configuration Values](/manage-feature-variants#json-configuration-values) | `>= 0.7.0` | `>= 2.2.0` | `>= 2.2.0` | `>= 1.3.1` | Not yet supported | Not yet supported | Not yet supported | Not yet supported | Not yet supported |
+| SDK | [JSON Configuration Values](/manage-feature-variants#json-configuration-values) | Goal tracking (`track`) |
+|---|---|---|
+| Node.js | `>= 0.7.0` | Supported |
+| JavaScript | `>= 2.2.0` | Supported |
+| React | `>= 2.2.0` | Supported |
+| **iOS** | `>= 0.1.0` | Supported |
+| **Android** | `>= 0.1.0` | Supported |
+| React Native | Not yet supported | Supported |
+| Java | `>= 1.3.1` | Supported |
+| Go | Not yet supported | Not yet supported |
+| Python | Not yet supported | Not yet supported |
+| Ruby | Not yet supported | Not yet supported |
+| .NET | Not yet supported | Not yet supported |
 
 ## Checking Your Installed Version
 
@@ -28,6 +38,12 @@ npm list featureflow-client react-featureflow-client
 
 # Java (Maven)
 mvn dependency:tree | grep featureflow-java-sdk
+
+# Android (Gradle)
+./gradlew :app:dependencies | grep featureflow-android-sdk
+
+# iOS (Swift Package Manager) — the resolved version is pinned here
+grep -A2 featureflow-ios-sdk Package.resolved
 ```
 
 If you're below the minimum version for a feature you want to use, upgrade the SDK first — see each SDK's [installation instructions](/nodejs-sdk#installation) for the latest release.

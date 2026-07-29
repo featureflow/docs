@@ -1,0 +1,398 @@
+---
+title: Go SDK
+sidebar_label: Go SDK
+slug: /go-sdk
+sidebar_position: 4
+---
+
+Get your Featureflow account at [featureflow.io](http://www.featureflow.io)
+
+GitHub: https://github.com/featureflow/featureflow-go-sdk
+
+The Featureflow SDK for Go. It is a **server-side** SDK: it downloads your rules and evaluates
+them locally, in-process, against a user you supply. Evaluation never makes a network call, so it
+is safe on a hot request path.
+
+## Installation
+
+```bash
+go get github.com/featureflow/featureflow-go-sdk
+```
+
+```go
+import "github.com/featureflow/featureflow-go-sdk/featureflow"
+```
+
+### Requirements
+
+- Go 1.21+
+
+## Getting your key
+
+Go to **Environments → (your environment) → API Keys** in the Featureflow dashboard and copy the
+**Server SDK key**. It starts with `sdk-srv-env-`.
+
+:::caution
+**A `sdk-srv-env-` key is a secret. Treat it like a database password.**
+
+It downloads your entire ruleset — every targeting rule, every audience, and the name of every
+attribute you target on. It must never reach a browser, a mobile app, a public repository, or any
+other client-side code. Load it from an environment variable or your secret manager, not from a
+literal in source.
+
+The client keys used by the browser and mobile SDKs, which start with `sdk-js-env-`, are public by
+design: they only ever return already-evaluated values for one user. The two are not
+interchangeable — a Go service needs the server key.
+
+If a server key has ever been exposed, rotate it.
+:::
+
+## Quick start
+
+```go
+package main
+
+import (
+	"log"
+	"os"
+
+	"github.com/featureflow/featureflow-go-sdk/featureflow"
+)
+
+func main() {
+	client, err := featureflow.Client(os.Getenv("FEATUREFLOW_SERVER_KEY"), featureflow.Config{})
+	if err != nil {
+		log.Fatalf("featureflow: %v", err)
+	}
+
+	user, err := featureflow.NewUserBuilder("user-123").
+		WithAttribute("tier", "gold").
+		Build()
+	if err != nil {
+		log.Fatalf("featureflow user: %v", err)
+	}
+
+	if client.Evaluate("new-checkout", user).IsOn() {
+		// the new checkout
+	} else {
+		// the old one
+	}
+}
+```
+
+:::caution
+**Do not discard the error with `_`.**
+
+`Client` returns `(*FeatureflowClient, error)` and returns a `nil` client alongside the error when
+the API key is empty — so a discarded error turns into a nil-pointer panic at the first
+`Evaluate`, usually under load rather than at boot.
+
+A *wrong* key is a separate problem, and a quieter one. The constructor does not verify the key,
+so it succeeds; the background poll then fails and is only written to the logger. Every flag falls
+back to its failover variant and your service keeps running as though nothing is wrong. Check the
+error, and watch for `[error]` lines from the SDK logger in your log aggregation.
+:::
+
+Create **one** client for the lifetime of the process — in `main`, and pass it down. It owns a
+background poller and an in-memory store, so a client per request would start a poller per request
+and re-download your ruleset each time.
+
+## Users and targeting
+
+Targeting rules match on the attributes you supply, built with the fluent builder:
+
+```go
+user, err := featureflow.NewUserBuilder("user-123").
+	WithAttribute("tier", "gold").
+	WithAttribute("age", 32).
+	WithAttribute("email", "user@example.com").
+	WithAttributes("roles", []featureflow.Attribute{"admin", "beta_tester"}).
+	Build()
+```
+
+`WithAttribute` sets a single value; `WithAttributes` sets a list, and a rule matches when **any**
+element of the list matches. Both replace any earlier value for the same key rather than appending
+to it.
+
+`Build` returns `(*User, error)` and errors when the id is empty, so handle it rather than
+discarding it. Two attributes are added for you: `featureflow.user.id`, and `featureflow.date` set
+to the moment `NewUserBuilder` was called — which is what date-based rules compare against. Build
+the user per request rather than once at startup, or `featureflow.date` will be frozen at the
+moment your process booted.
+
+The `before` and `after` operators accept both an RFC 3339 timestamp and the date-only form the
+dashboard's date picker produces — `2026-07-03`, which is read as UTC midnight, the same reading
+every other Featureflow SDK gives it. Timestamps are compared as instants, so an offset such as
+`-05:00` is resolved before the comparison rather than compared as text. A date that cannot be
+parsed at all fails to match, so check the value on a scheduled rule if it never fires.
+
+:::caution
+**The user id must be stable for the same person over time.**
+
+The id is what [percentage rollouts](/gradual-rollouts) bucket on: the variant is chosen from a
+SHA-1 hash of the feature key and the user id, so the same id always lands in the same bucket. An
+id that changes per request re-buckets the user every time, which turns "10% of users" into "10%
+of requests" and makes a rollout look as though it is flapping on and off. Use your own account
+id, not a session id or a per-request UUID.
+:::
+
+:::note
+**Numeric attributes are compared by value, whatever their Go type.**
+
+Rule values arrive as JSON, where every number decodes to `float64`, but you do not have to match
+that at the call site. Any of Go's numeric types — `int`, the sized `int` and `uint` variants,
+`float32`, `float64` — is widened before comparison, so `WithAttribute("age", 32)` matches a
+`greaterThan 18` rule exactly as `float64(32)` does.
+
+An attribute whose type the operator cannot use — a string under `greaterThan`, say — simply fails
+to match that condition. Operators never panic, so a mistargeted rule cannot take down the request
+it was evaluated in.
+:::
+
+## Evaluating features
+
+`Evaluate` returns an `Evaluate` value with four methods:
+
+```go
+evaluation := client.Evaluate("checkout-layout", user)
+
+evaluation.IsOn()       // variant == "on"
+evaluation.IsOff()      // variant == "off"
+evaluation.Is("wizard") // any variant
+evaluation.Value()      // "wizard"
+```
+
+`Is` is an exact string comparison, so variant keys are case-sensitive here.
+
+Evaluation is synchronous and local — it reads the polled ruleset out of an in-memory store and
+computes the variant in-process, with no network call and no blocking. There is no need to cache
+the result yourself.
+
+`IsOn`, `IsOff` and `Is` each record an evaluation event, sent asynchronously in the background.
+`Value` does not. Events are what drive [feature statistics](/feature-statistics) and stale-flag
+detection, so prefer `IsOn`/`Is` on the path where the user is genuinely exposed to the feature,
+and reach for `Value` when you are only inspecting the current variant — a diagnostics endpoint,
+an admin screen, or a log line.
+
+### Evaluating without a user
+
+`EvaluateBasic` builds a user from an id for you, for the common case where you have no attributes
+to target on:
+
+```go
+if client.EvaluateBasic("new-checkout", "user-123").IsOn() {
+	// ...
+}
+```
+
+It is exactly equivalent to building a user with `NewUserBuilder(userId).Build()` and calling
+`Evaluate`, so rollouts still bucket correctly — but rules that target attributes cannot match,
+because there are none to match against.
+
+## Registering features and failover variants
+
+Register the features a service uses at construction time. This tells Featureflow the feature
+exists, so it appears in the dashboard before anyone has flipped it, and it sets the **failover
+variant** the SDK serves locally when it has no configuration for that key:
+
+```go
+config := featureflow.Config{
+	WithFeatures: []featureflow.FeatureRegistration{
+		featureflow.WithFeature("new-checkout", "off").Build(),
+		featureflow.WithFeature("checkout-layout", "classic").
+			AddVariant("classic", "Classic").
+			AddVariant("wizard", "Wizard").
+			Build(),
+	},
+}
+
+client, err := featureflow.Client(os.Getenv("FEATUREFLOW_SERVER_KEY"), config)
+```
+
+`WithFeature(key, failoverVariant)` starts the builder and `Build` finishes it. Add variants with
+`AddVariant(key, name)`; if fewer than two are supplied, the feature is registered with the default
+`on` and `off` variants.
+
+A feature with no registration and no configuration evaluates to `off`. That default is only safe
+in one direction, so register a failover explicitly for anything where `off` is the harmful
+answer — note the polarity for a kill switch protecting a fragile dependency, where the safe
+failover is usually `on`.
+
+## Configuration
+
+`featureflow.Config` is a plain struct; the zero value is valid and every field is optional.
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `WithFeatures` | `[]FeatureRegistration` | `nil` | Features to register on startup, and the failover variant each one serves when no configuration is available. |
+| `DisableEvents` | `bool` | `false` | Stop sending evaluation events. Also suppresses feature registration, since that is sent over the same channel. |
+| `Logger` | `*log.Logger` | writes to `os.Stderr` with the prefix `Featureflow:` | Where the SDK writes diagnostics. Lines are tagged `[info]` or `[error]`. Supply your own to route them into your logging stack. |
+| `FeatureStore` | `FeatureStore` | in-memory store | Where the polled ruleset is held. Implement `Get`/`Set`/`SetAll` to substitute your own. |
+| `BaseURL` | `string` | `https://app.featureflow.io` | Where the ruleset is fetched from and events are posted. |
+
+The SDK polls for changes every 30 seconds, using an ETag so an unchanged ruleset costs a `304`
+rather than a full download. That interval is your flag propagation latency: a change made in the
+dashboard reaches a running Go service within roughly half a minute. It is not currently
+configurable.
+
+## Using the client in an HTTP service
+
+Build the user once per request in middleware and put it on the request context, so handlers do not
+each rebuild it — and so every flag read in one request evaluates against exactly the same user
+and the same `featureflow.date`:
+
+```go
+type ctxKey struct{}
+
+func WithFeatureflowUser(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		account := AccountFromSession(r) // your own session lookup
+
+		// WithAttributes takes []featureflow.Attribute, so a []string needs converting.
+		roles := make([]featureflow.Attribute, len(account.Roles))
+		for i, role := range account.Roles {
+			roles[i] = role
+		}
+
+		user, err := featureflow.NewUserBuilder(account.ID).
+			WithAttribute("tier", account.Tier).
+			WithAttributes("roles", roles).
+			Build()
+		if err != nil {
+			// An empty account id is the only cause. Carry on without a user rather than
+			// failing the request — the handler will fall back to its own default.
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), ctxKey{}, user)))
+	})
+}
+
+func userFrom(ctx context.Context) (*featureflow.User, bool) {
+	user, ok := ctx.Value(ctxKey{}).(*featureflow.User)
+	return user, ok
+}
+```
+
+The handler then reads the flag from the client it was given at construction:
+
+```go
+type CheckoutHandler struct {
+	flags *featureflow.FeatureflowClient
+}
+
+func (h *CheckoutHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	user, ok := userFrom(r.Context())
+	if ok && h.flags.Evaluate("new-checkout", user).IsOn() {
+		h.newCheckout(w, r)
+		return
+	}
+	h.legacyCheckout(w, r)
+}
+```
+
+`FeatureflowClient` is safe to share across goroutines: the default feature store is guarded by a
+mutex, and evaluation only reads from it.
+
+## Startup timing
+
+`Client` starts the background poller and returns without waiting for the first response. Rules
+arrive asynchronously a moment later, so **a flag read in the first instants after construction
+gets its failover variant**, not its configured value.
+
+For a long-running service this is almost never visible: the ruleset lands well before the first
+request. It matters in two places:
+
+- **Flag reads during initialisation.** Wiring that reads a flag while assembling your dependency
+  graph will read it before the ruleset has arrived, and — because the value is then baked into
+  the object it configured — will keep that failover value for the life of the process. Read flags
+  at request time instead.
+- **Short-lived processes.** A CLI tool, a batch job, or a function invocation that starts, reads
+  a flag and exits may never see the ruleset at all. Register an explicit failover for every flag
+  such a process reads, so the value it gets is one you chose.
+
+## Testing
+
+Do not construct a real client in unit tests. Building one starts a poller and reaches for the
+network, which makes tests slow, flaky and dependent on the state of a real environment.
+
+Instead, take a narrow interface in your own code — one that describes only what you use — and
+substitute a fake:
+
+```go
+type Flags interface {
+	Evaluate(key string, user *featureflow.User) featureflow.Evaluate
+}
+```
+
+`*featureflow.FeatureflowClient` satisfies this already, so production wiring is unchanged and only
+your tests differ.
+
+`featureflow.Evaluate` has unexported fields, so a fake cannot construct one directly. Narrow the
+interface to the answer you actually need instead of the evaluation object:
+
+```go
+type Flags interface {
+	IsOn(key string, user *featureflow.User) bool
+}
+
+// Production adapter.
+type featureflowFlags struct{ client *featureflow.FeatureflowClient }
+
+func (f featureflowFlags) IsOn(key string, user *featureflow.User) bool {
+	return f.client.Evaluate(key, user).IsOn()
+}
+
+// Test double.
+type fakeFlags map[string]bool
+
+func (f fakeFlags) IsOn(key string, user *featureflow.User) bool { return f[key] }
+```
+
+Type the handler's field as the interface rather than as `*featureflow.FeatureflowClient`, and
+tests can then set the flags they care about, with no network and no timing to wait on:
+
+```go
+type CheckoutHandler struct {
+	flags Flags // not *featureflow.FeatureflowClient
+}
+
+// In main:  &CheckoutHandler{flags: featureflowFlags{client: client}}
+// In tests: &CheckoutHandler{flags: fakeFlags{"new-checkout": true}}
+```
+
+Write a test for **both** branches of every flag. An untested `off` branch is the usual reason a
+rollback does not work when you need it to.
+
+If you do need an end-to-end test against a real environment, point `Config.BaseURL` at a test
+server and set `Config.DisableEvents` to `true` so the test does not write evaluation events into
+your statistics.
+
+## Current limitations
+
+:::note
+**Goal tracking is not available in this SDK.** There is no `track` method, so conversions cannot
+be recorded from a Go service. Flag evaluation, targeting and percentage rollouts all work
+normally; only the goal side of experiments is missing. Record the conversion from a client SDK
+that supports it, or from another service. See [SDK Compatibility](/sdk-compatibility) for which
+SDKs support goal tracking today.
+:::
+
+:::note
+**JSON configuration values are not supported.** A variant with a
+[JSON config value](/manage-feature-variants#json-configuration-values) set in the dashboard still
+evaluates correctly — `Value()` returns the variant key as normal — but this SDK has no method to
+read the JSON payload. See [SDK Compatibility](/sdk-compatibility).
+:::
+
+## Next steps
+
+- [Gradual Rollouts](/gradual-rollouts) — Release to a percentage of users
+- [Targeting Features](/targeting-features) — Control who sees what
+- [Managing Variants](/manage-feature-variants) — Create custom feature states
+- [SDK Compatibility](/sdk-compatibility) — Which capabilities each SDK supports
+
+## License
+
+Apache-2.0

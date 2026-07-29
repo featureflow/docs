@@ -23,7 +23,7 @@ If you haven't signed up yet - [go and get an account now here](https://app.feat
 ```javascript
 const FF_KEY = '<environment key goes here>';
 ```
-You can find the key on the settings panel of your environment page - it begins with 'js-env-'
+You can find the key on the settings panel of your environment page - it begins with 'sdk-js-env-'
 
 ![SDK Key](/img/javascript-5minute-1.png)
 

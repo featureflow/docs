@@ -34,7 +34,7 @@ Copy the **Server SDK API Key** (starts with `sdk-srv-env-`):
 Update the code:
 
 ```java
-FeatureFlowClient client = new FeatureFlowClient.Builder("srv-env-YOUR_API_KEY")
+FeatureFlowClient client = new FeatureFlowClient.Builder("sdk-srv-env-YOUR_API_KEY")
 ```
 
 ## 3. Get the Feature Key

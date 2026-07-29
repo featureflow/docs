@@ -1,0 +1,420 @@
+---
+title: Android SDK
+sidebar_label: Android SDK
+slug: /android-sdk
+sidebar_position: 3
+---
+
+Get your Featureflow account at [featureflow.io](http://www.featureflow.io)
+
+GitHub: https://github.com/featureflow/featureflow-android-sdk
+
+The Featureflow client SDK for Android, written in Kotlin. It is a **client-side** SDK: it asks
+Featureflow for values already evaluated for one user, rather than downloading your rules and
+evaluating them on the device.
+
+## Installation
+
+```kotlin
+// build.gradle.kts
+dependencies {
+    implementation("io.featureflow:featureflow-android-sdk:0.1.0")
+}
+```
+
+### Requirements
+
+- minSdk 21
+- Java 17 toolchain
+- Kotlin 1.9+
+
+The SDK depends only on `kotlinx-coroutines` and `androidx.lifecycle`. It uses
+`HttpURLConnection` and `org.json` from the platform rather than OkHttp or a JSON library, so it
+cannot conflict with your app's HTTP stack or force a version of one on you.
+
+It needs the internet permission, which it declares itself — you do not need to add it:
+
+```xml
+<uses-permission android:name="android.permission.INTERNET" />
+```
+
+## Getting your key
+
+Go to **Environments → (your environment) → API Keys** in the Featureflow dashboard and copy the
+**Client SDK key**. It starts with `sdk-js-env-`.
+
+:::caution
+**Use the client key, never the server key.**
+
+A `sdk-js-env-` key is public by design — it only ever returns already-evaluated values for a
+single user, which is why it is safe to ship. A `sdk-srv-env-` key downloads your entire ruleset,
+including every targeting rule and attribute name, and anyone can extract it from a shipped APK.
+If a server key has ever been built into an app, rotate it.
+:::
+
+## Quick start
+
+```kotlin
+val user = FeatureflowUser.Builder("user-123")
+    .withAttribute("tier", "gold")
+    .withAttributes("roles", listOf("beta"))
+    .build()
+
+val featureflow = FeatureflowClient.initialize(
+    context = applicationContext,
+    apiKey = "sdk-js-env-YOUR_KEY",
+    user = user
+)
+
+if (featureflow.evaluate("new-checkout").isOn()) {
+    // the new checkout
+} else {
+    // the old one
+}
+```
+
+`initialize` is a `suspend` function that waits for the first evaluation, so calling it before
+rendering flag-driven UI avoids a visible variant swap on launch. It never throws — if Featureflow
+is unreachable the client falls back to the on-disk cache, and then to your configured defaults,
+because a flag service being down must never stop your app from starting.
+
+Create **one** client and share it. A second instance double-counts impressions and can disagree
+with the first about a flag. `Application.onCreate` or your DI graph is the usual place; because
+`initialize` suspends, launch it in a coroutine:
+
+```kotlin
+class MyApplication : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        CoroutineScope(Dispatchers.IO).launch {
+            FeatureflowClient.initialize(this@MyApplication, BuildConfig.FEATUREFLOW_KEY)
+        }
+    }
+}
+```
+
+Pass an **application** context. The SDK holds no reference to an Activity. If you would rather
+not thread the client through your app, `FeatureflowClient.get()` returns the instance that
+`initialize` created, or null before then.
+
+Omit the `user` argument, as above, and the SDK generates an anonymous id and persists it.
+
+## Evaluating features
+
+```kotlin
+val evaluation = featureflow.evaluate("checkout-layout")
+
+evaluation.isOn()           // variant == "on"
+evaluation.isOff()          // variant == "off"
+evaluation.`is`("wizard")   // any variant, case-insensitive
+evaluation.value()          // "wizard"
+evaluation.jsonValue()      // the variant's JSON config payload, if any
+```
+
+`is` is a Kotlin keyword, so it needs backticks at the call site. From Java it is just
+`evaluation.is("wizard")`.
+
+`evaluate` is synchronous and cheap — it reads the already-fetched evaluation, so it is safe to
+call directly in a composable or an adapter's `onBindViewHolder`, and there is no need to cache
+the result yourself.
+
+Each `evaluate` call records an impression. Impressions are summarised into a per-variant count
+rather than sent individually, so a flag read inside a composable that recomposes on every state
+change does not post an event per frame.
+
+Use `peek()` where a read does not mean the user was actually exposed to the feature — debug
+screens, diagnostics, admin panels:
+
+```kotlin
+val evaluation = featureflow.peek("new-checkout")   // records no impression
+```
+
+Impressions drive experiment results and stale-flag detection, so keeping non-exposures out of
+them matters.
+
+`allFeatures()` returns every feature and its evaluated variant, and also records no impressions.
+
+### Variant config values
+
+A variant can carry a [JSON config value](/manage-feature-variants#json-configuration-values), so
+a flag can change a value rather than a code path:
+
+```kotlin
+val maxUploads = featureflow.evaluate("upload-limits")
+    .jsonValue()?.get("maxUploads")?.intValue ?: 10   // always have a fallback
+```
+
+`jsonValue()` returns null when the resolved variant has no JSON set, and the typed accessors
+(`stringValue`, `intValue`, `doubleValue`, `booleanValue`, `arrayValue`, `objectValue`) return
+null when the value is not of that type, so always supply a fallback.
+
+## Jetpack Compose
+
+`features` is a `StateFlow` of every feature to its current variant, so the UI follows a rollout
+without a relaunch:
+
+```kotlin
+@Composable
+fun Checkout(featureflow: FeatureflowClient) {
+    val features by featureflow.features.collectAsState()
+
+    if (features["new-checkout"] == "on") {
+        NewCheckout()
+    } else {
+        LegacyCheckout()
+    }
+}
+```
+
+Reading through the flow records **no** impression, while `evaluate()` does. That split is
+deliberate: an impression is meant to mean the user was exposed to the feature, and a
+recomposition is not exposure — the same composable may re-read the map dozens of times for one
+screen the user sees once. Call `evaluate()` at the point exposure actually happens, typically in
+the branch you took or in a `LaunchedEffect`:
+
+```kotlin
+if (features["new-checkout"] == "on") {
+    LaunchedEffect(Unit) { featureflow.evaluate("new-checkout") }
+    NewCheckout()
+}
+```
+
+:::note
+The flow starts empty and is populated once an evaluation has been applied, from the network or
+the cache. Until then a lookup returns null, so treat a missing key as "not ready yet" rather than
+as `off`, and check `featureflow.isReady` if you need to tell the two apart. In `offline` mode the
+flow is not populated at all — read through `evaluate()` or `peek()` there, which serve your
+`defaultVariants`.
+:::
+
+## Views
+
+For plain View-based code, register a listener and re-apply when the variants change. The listener
+is called with the full current map:
+
+```kotlin
+class CheckoutActivity : AppCompatActivity() {
+
+    private val listener: (Map<String, String>) -> Unit = { applyFlags() }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        FeatureflowClient.get()?.addListener(listener)
+        applyFlags()
+    }
+
+    override fun onDestroy() {
+        FeatureflowClient.get()?.removeListener(listener)
+        super.onDestroy()
+    }
+}
+```
+
+:::caution
+**Always remove the listener.** The client lives for the whole process, so a listener that closes
+over an Activity keeps that Activity — and its whole view hierarchy — alive for the life of the
+app. Hold the lambda in a property, as above, so `removeListener` is given the same instance you
+added; a fresh lambda literal will not match. `removeAllListeners()` clears the lot.
+:::
+
+A listener that throws is caught and logged, so one bad callback cannot stop the others or break
+the poll loop.
+
+## Users and targeting
+
+Targeting rules match on the attributes you supply, built with the fluent builder:
+
+```kotlin
+val user = FeatureflowUser.Builder("user-123")
+    .withAttribute("tier", "gold")
+    .withAttribute("age", 32)
+    .withAttribute("beta", true)
+    .withAttributes("roles", listOf("admin", "tester"))
+    .withSessionAttribute("dayofweek", JsonValue.of(5))
+    .build()
+```
+
+Attributes may be strings, numbers, booleans, dates or lists of strings, and a rule matches when
+**any** element of a list matches. Session attributes are used for the evaluation but are not
+persisted against the user in Featureflow for later rule-building.
+
+:::caution
+**The user id must be stable for the same person across launches.**
+
+The id is what [percentage rollouts](/gradual-rollouts) bucket on. An id that changes per launch
+re-buckets the user every time, which turns "10% of users" into "10% of sessions" and makes a
+rollout look as though it is flapping on and off. Use your own account id.
+
+Do **not** use the Android ID or an advertising ID. They change on reset and reinstall, so they
+are not stable, and they carry privacy obligations you do not need for flag bucketing.
+:::
+
+Omit the user entirely and the SDK generates an anonymous id and persists it, which keeps a
+signed-out user in a consistent bucket across launches.
+
+### On login and logout
+
+```kotlin
+featureflow.updateUser(loggedInUser)   // suspend; re-evaluates everything
+```
+
+Call `updateUser` on login, on logout, and whenever an attribute used in targeting changes. Queued
+impressions are flushed first so they stay attributed to the user who generated them. The on-disk
+cache is keyed by API key *and* user id, so a new user is never served the previous user's values.
+
+On logout, call `resetAnonymousId()` to issue a fresh anonymous id, so the signed-out user does
+not stay in the buckets the account was in. It does not re-evaluate on its own — follow it with
+`updateUser`.
+
+### Sharing a user with your backend
+
+For an experiment that spans your app and your server, both sides must use the same id or they
+will disagree about which arm the user is in. For a signed-in user that is your own account id.
+For an anonymous one, send the id the SDK generated:
+
+```kotlin
+requestBuilder.addHeader("X-Featureflow-Anonymous-Id", featureflow.anonymousId)
+```
+
+## Goals
+
+Record a conversion with `track`:
+
+```kotlin
+featureflow.track("checkout-completed")
+featureflow.track("purchase", value = 49.95)
+featureflow.track("purchase", value = 49.95, data = mapOf("plan" to JsonValue.of("pro")))
+```
+
+`value` is the metric — an order total, say — and `data` carries custom fields alongside it.
+
+Fire the goal where the conversion actually happens — after payment succeeds, not when the button
+is tapped — and for **every** arm of an experiment including the control, or the denominator is
+wrong.
+
+Events are batched, flushed on a timer, and flushed again when the app goes to the background.
+Backgrounding is the last reliable moment to send: a backgrounded Android process can be killed
+without further notice, taking unsent impressions and goals with it.
+
+## Configuration
+
+```kotlin
+val config = FeatureflowConfig(
+    pollingIntervalMillis = 60_000,
+    defaultVariants = mapOf("new-checkout" to "off", "kill-switch-payments" to "on"),
+    logger = AndroidLogcatLogger(FeatureflowLogLevel.DEBUG)
+)
+
+val featureflow = FeatureflowClient.initialize(
+    context = applicationContext,
+    apiKey = "sdk-js-env-YOUR_KEY",
+    user = user,
+    config = config
+)
+```
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `pollingIntervalMillis` | `Long` | `60_000` | Foreground refresh interval. This is your flag propagation latency, and the main driver of request volume. |
+| `backgroundPollingIntervalMillis` | `Long` | `0` | Polling interval while backgrounded. Zero disables it — see below. |
+| `refreshOnForeground` | `Boolean` | `true` | Re-fetch when the app returns to the foreground, regardless of the poll timer. |
+| `defaultVariants` | `Map<String, String>` | `emptyMap()` | Variants served before the first fetch, and when offline or uncached. Anything unlisted is `off`. |
+| `useCache` | `Boolean` | `true` | Persist the last evaluation to `SharedPreferences`, so returning users skip the default-value frame. |
+| `offline` | `Boolean` | `false` | No network calls at all; serves `defaultVariants`. For tests and previews. |
+| `disableEvents` | `Boolean` | `false` | Stop sending impressions and goals while still fetching flags. |
+| `eventFlushIntervalMillis` | `Long` | `30_000` | Milliseconds between event flushes. |
+| `maxEventQueueSize` | `Int` | `1000` | Events held in memory between flushes; beyond this, further events are dropped. |
+| `timeoutMillis` | `Int` | `10_000` | Connect and read timeout in milliseconds. |
+| `logger` | `FeatureflowLogger?` | `null` | Diagnostics sink. Null by default — an SDK should not write to your logcat uninvited. |
+| `baseUrl` | `String` | `https://app.featureflow.io` | Where evaluations are fetched from. |
+| `eventsUrl` | `String` | `https://events.featureflow.io` | Where impression and goal events are posted. |
+
+Set `defaultVariants` for any flag whose wrong-way default would be harmful. It is the mobile
+equivalent of the failover variants the server SDKs register — and note the polarity: for a kill
+switch protecting a fragile dependency, the safe default is usually the *safe path*, which may
+mean the flag reads `on` by default.
+
+## Things that are different on mobile
+
+### Shipped binaries never update
+
+Someone will still be running the build you shipped today in two years, and it will keep
+evaluating whatever flags it reads. **Never delete a flag that a live build still reads** — archive
+it instead, and leave the `off` variant serving something safe. Check your minimum supported app
+version before cleaning up a mobile flag.
+
+### Background polling is off by default
+
+A backgrounded Android process is subject to Doze and App Standby: timers are deferred or stop
+entirely once the process is frozen, so a background poll interval would be a promise the platform
+does not keep. Flags refresh when the app returns to the foreground instead, which is what
+`refreshOnForeground` is for.
+
+If you genuinely need updates while backgrounded, schedule a `WorkManager` job and call
+`refresh()` yourself — that is a supported use of the API, and it goes through a scheduler the
+platform actually honours:
+
+```kotlin
+class FlagRefreshWorker(context: Context, params: WorkerParameters) :
+    CoroutineWorker(context, params) {
+
+    override suspend fun doWork(): Result {
+        val refreshed = FeatureflowClient.get()?.refresh() ?: false
+        return if (refreshed) Result.success() else Result.retry()
+    }
+}
+```
+
+`refresh()` returns false if the fetch failed, in which case the previous values are kept.
+
+A consequence of all this: a long foreground session can hold a stale value for up to
+`pollingIntervalMillis`. Do not rely on a flag flipping mid-session for anything safety-critical.
+
+### Time-based rules use the device clock
+
+Rules that target `featureflow.date` or `featureflow.hourofday` are deliberately resolved
+on-device. That is what keeps a response identical for everyone in a bucket, and therefore
+cacheable at the CDN. Two consequences follow:
+
+- A scheduled rollout fires at each user's **local** time, not at one instant worldwide.
+- A device with a wrong clock gets the wrong answer.
+
+For a hard cutover at a specific moment, flip the flag in the dashboard rather than scheduling it
+with a time-based rule.
+
+## Testing
+
+Run the SDK offline with fixed variants — no network, fully deterministic:
+
+```kotlin
+val featureflow = FeatureflowClient.initialize(
+    context = context,
+    apiKey = "test",
+    config = FeatureflowConfig(
+        offline = true,
+        defaultVariants = mapOf("new-checkout" to "on")
+    )
+)
+
+assertTrue(featureflow.evaluate("new-checkout").isOn())
+```
+
+In `offline` mode nothing is fetched, cached or posted, and every flag resolves from
+`defaultVariants` — anything unlisted is `off`.
+
+Write a test for **both** branches of every flag. An untested `off` branch is the usual reason a
+rollback fails.
+
+Call `close()` when a test finishes to stop polling and event delivery and release the shared
+instance that `FeatureflowClient.get()` returns. Most apps never need it — the client is meant to
+live for the process — but tests and short-lived processes do.
+
+## Next steps
+
+- [Gradual Rollouts](/gradual-rollouts) — Release to a percentage of users
+- [Targeting Features](/targeting-features) — Control who sees what
+- [Managing Variants](/manage-feature-variants) — Create custom feature states
+
+## License
+
+MIT

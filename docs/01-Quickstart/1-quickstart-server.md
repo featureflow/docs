@@ -127,7 +127,7 @@ new Featureflow.Client({
 
 ```dotnet .NET
 using Featureflow.Client;
-var client = FeatureflowClientFactory.Create("srv-env-YOUR_SERVER_ENVIRONMENT_API_KEY");
+var client = FeatureflowClientFactory.Create("sdk-srv-env-YOUR_SERVER_ENVIRONMENT_API_KEY");
 ```
 
 </TabItem>

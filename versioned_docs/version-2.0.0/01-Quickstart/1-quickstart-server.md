@@ -71,7 +71,7 @@ The client maintains an optimised cache of your feature rules and receives real-
 <TabItem value="java" label="Java">
 
 ```java
-FeatureflowClient client = new FeatureflowClient.Builder("srv-env-YOUR_API_KEY")
+FeatureflowClient client = new FeatureflowClient.Builder("sdk-srv-env-YOUR_API_KEY")
     .withFeatures(Arrays.asList(
         new Feature("logout-button", Variant.off),
         new Feature("example-feature", Variant.off)
@@ -94,7 +94,7 @@ var withFeatures = [
 ];
 
 new Featureflow.Client({
-    apiKey: "srv-env-YOUR_API_KEY",
+    apiKey: "sdk-srv-env-YOUR_API_KEY",
     withFeatures: withFeatures
 }, function(error, featureflow) {
     if (error) {
@@ -110,7 +110,7 @@ new Featureflow.Client({
 ```csharp
 using Featureflow.Client;
 
-var client = FeatureflowClientFactory.Create("srv-env-YOUR_API_KEY");
+var client = FeatureflowClientFactory.Create("sdk-srv-env-YOUR_API_KEY");
 ```
 
 </TabItem>
@@ -125,7 +125,7 @@ with_features = [
 ]
 
 featureflow = Featureflow::Client.new(
-    api_key: "srv-env-YOUR_API_KEY",
+    api_key: "sdk-srv-env-YOUR_API_KEY",
     with_features: with_features
 )
 ```
@@ -134,7 +134,7 @@ featureflow = Featureflow::Client.new(
 <TabItem value="go" label="Go">
 
 ```go
-featureflowClient, err := featureflow.Client("srv-env-YOUR_API_KEY", featureflow.Config{
+featureflowClient, err := featureflow.Client("sdk-srv-env-YOUR_API_KEY", featureflow.Config{
     WithFeatures: []featureflow.FeatureRegistration{
         featureflow.WithFeature("logout-button", "off").Build(),
         featureflow.WithFeature("example-feature", "off").Build(),
