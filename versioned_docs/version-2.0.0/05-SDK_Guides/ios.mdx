@@ -97,8 +97,8 @@ let evaluation = featureflow.evaluate("checkout-layout")
 
 evaluation.isOn()          // variant == "on"
 evaluation.isOff()         // variant == "off"
-evaluation.is("wizard")    // any variant, case-insensitive
-evaluation.value()         // "wizard"
+evaluation.is("wizard")    // any variant, compared exactly
+evaluation.value()         // "wizard" — exactly as defined in the dashboard
 evaluation.jsonValue()     // the variant's JSON config payload, if any
 ```
 
