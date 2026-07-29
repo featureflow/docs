@@ -34,6 +34,26 @@
           "type": "link",
           "label": "ReactJS",
           "href": "https://github.com/featureflow/react-featureflow-client"
+        },
+        {
+          "type": "link",
+          "label": "iOS SDK",
+          "href": "https://github.com/featureflow/featureflow-ios-sdk"
+        },
+        {
+          "type": "link",
+          "label": "Android SDK",
+          "href": "https://github.com/featureflow/featureflow-android-sdk"
+        },
+        {
+          "type": "link",
+          "label": "Go SDK",
+          "href": "https://github.com/featureflow/featureflow-go-sdk"
+        },
+        {
+          "type": "link",
+          "label": "Ruby SDK",
+          "href": "https://github.com/featureflow/featureflow-ruby-sdk"
         }
       ]
     }
