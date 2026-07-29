@@ -7,7 +7,7 @@ slug: /nodejs-5minute
 
 Ok, want to test us out in (less than) 5 minutes? Lets have a go!
 
-Firstly, If you haven't signed up yet you can [go and get a free account here](https://app.featureflow.io/)
+Firstly, If you haven't signed up yet you can [go and get a free account here](https://app.featureflow.com)
 
 Once signed up, we give you a default project with a test and production environment plus one example feature.
 

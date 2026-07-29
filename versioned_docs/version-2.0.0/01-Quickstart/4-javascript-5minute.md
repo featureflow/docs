@@ -10,7 +10,7 @@ Try Featureflow in your browser in under 5 minutes using CodePen — no installa
 
 ## Prerequisites
 
-If you haven't already, [create a free Featureflow account](https://app.featureflow.io/).
+If you haven't already, [create a free Featureflow account](https://app.featureflow.com).
 
 ## 1. Open the CodePen Example
 

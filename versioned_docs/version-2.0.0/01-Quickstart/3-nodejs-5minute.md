@@ -10,7 +10,7 @@ Get Featureflow running in your Node.js application in under 5 minutes.
 
 ## Prerequisites
 
-If you haven't already, [create a free Featureflow account](https://app.featureflow.io/). New accounts include a default project with test and production environments, plus an example feature.
+If you haven't already, [create a free Featureflow account](https://app.featureflow.com). New accounts include a default project with test and production environments, plus an example feature.
 
 ## 1. Clone the Example Project
 

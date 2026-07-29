@@ -10,7 +10,7 @@ This will run you through trialling out the basics.
 
 Once you have tried this head to the quick start to implement it in your own project.
 
-If you haven't signed up yet - [go and get an account now here](https://app.featureflow.io/)
+If you haven't signed up yet - [go and get an account now here](https://app.featureflow.com)
 
 ### 1. Go to the JsBin Example
 

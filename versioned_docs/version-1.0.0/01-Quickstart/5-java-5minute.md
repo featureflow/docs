@@ -6,7 +6,7 @@ slug: /java-5minute
 
 ## Want to try us out? Let's do the 5 minute test:
 
-[Firstly, If you haven't signed up yet you go and get a free account here](https://app.featureflow.io/)
+[Firstly, If you haven't signed up yet you go and get a free account here](https://app.featureflow.com)
 
 Once signed up, we give you a default project with a test and production environment plus one example feature.
 

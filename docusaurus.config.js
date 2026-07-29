@@ -96,7 +96,7 @@ const config = {
               },
               {
                 label: 'Login',
-                href: 'https://app.featureflow.io',
+                href: 'https://app.featureflow.com',
               },
             ],
           },
