@@ -29,6 +29,63 @@ Every feature has a failover rule — the catch-all "else" rule at the bottom. I
 
 <img src="/img/2-0/feature-targeting-create-attribute.png" alt="Create targeting rule" width="50%" />
 
+### Comparators
+
+The comparators offered depend on the attribute's data type. Values are compared strictly by type — a text comparator never matches a number, and a number comparator never matches text, so make sure the attribute your application sends has the type you expect.
+
+**Text**
+
+| Comparator | Matches when the attribute… |
+|---|---|
+| `equals` | is exactly this value |
+| `contains` | contains this value anywhere |
+| `startsWith` | begins with this value |
+| `endsWith` | ends with this value |
+| `matches` | matches a regular expression — see below |
+| `in` | equals **any** of the listed values |
+| `notIn` | equals **none** of the listed values |
+
+**Number**
+
+| Comparator | Matches when the attribute… |
+|---|---|
+| `greaterThan` / `greaterThanOrEqual` | is greater than (or equal to) this number |
+| `lessThan` / `lessThanOrEqual` | is less than (or equal to) this number |
+
+**Date**
+
+| Comparator | Matches when the attribute… |
+|---|---|
+| `before` / `after` | is before / after this date-time |
+
+Dates are compared as ISO-8601 date-times, with or without a timezone offset. A date-only value such as `2026-07-03` means midnight **UTC**, so a rule scheduled this way takes effect at the same instant for every user worldwide.
+
+`in` and `notIn` accept a list of values; every other comparator takes a single value.
+
+### Matching with regular expressions
+
+The `matches` comparator tests the attribute against a regular expression:
+
+- **It matches anywhere in the value.** The pattern `admin` matches `superadmin`. To match the whole value, anchor the pattern with `^` and `$`.
+- **Matching is case-sensitive** and there are no flags. To match regardless of case, spell out both cases: `[Bb]eta`.
+
+Some useful patterns:
+
+- `@example\.com$` — email addresses on a domain
+- `^(alpha|beta)$` — exactly one of several values
+- `^\d+$` — digits only
+- `^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$` — a UUID
+
+#### Portable patterns
+
+Targeting rules are evaluated inside your application by the Featureflow SDK, using your platform's own regular-expression engine. Those engines don't all support the same syntax, so Featureflow accepts the **portable subset** that behaves identically on every platform — guaranteeing a rule gives the same answer whether it runs in a browser, a JVM, a Go service, or a mobile app.
+
+Supported: literal text, `.`, anchors (`^`, `$`, `\b`, `\B`), character classes like `[a-z0-9]` and `[^…]`, the class shorthands `\d \D \s \S \w \W`, escapes `\n \r \t \f` and `\xHH`, groups `(…)` and `(?:…)`, alternation with `|`, and the quantifiers `*`, `+`, `?` and `{n}`, `{n,}`, `{n,m}` (up to 1000 repeats, with lazy `?` variants).
+
+Not supported: lookahead and lookbehind, backreferences, named groups, inline flags such as `(?i)`, and escapes like `\u`, `\p` or `\v` that platforms interpret differently. Literal braces and brackets must be escaped: `\{`, `\[`. If a pattern uses unsupported syntax, the rule editor tells you as you type — and explains the portable way to write the same thing.
+
+One subtlety worth knowing: on a few platforms `\d`, `\w` and `\s` can also match non-ASCII digits and letters. If you need strictly ASCII matching, use explicit classes such as `[0-9]` or `[A-Za-z0-9_]`.
+
 ### Multiple Conditions
 
 Use the **+** and **-** buttons to add multiple conditions to a rule. All conditions within a rule are evaluated with AND logic — all must match for the variant to be returned.
