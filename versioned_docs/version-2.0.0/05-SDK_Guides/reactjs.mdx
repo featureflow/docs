@@ -197,6 +197,22 @@ export default withFeatureflowProvider({
 
 For more, see the github repo [Featureflow Javascript Client](https://github.com/featureflow/featureflow-javascript-sdk)
 
+### Naming your application
+
+Optionally name this app so the dashboard can attribute SDK usage and flag evaluations to it, by passing `application` in the provider's `config` (it is forwarded to the underlying Javascript client):
+
+```tsx
+<FeatureflowProvider
+  apiKey="sdk-js-env-YOUR_KEY"
+  user={user}
+  config={{ application: 'web-app' }}
+>
+  <App />
+</FeatureflowProvider>
+```
+
+See [Application Tags](/application-tags) for the naming rules and what the tag powers.
+
 ### JSON Configuration Values
 
 _Requires `react-featureflow-client >= 2.2.0` (which depends on `featureflow-client >= 2.2.0`) — see [SDK Compatibility](/sdk-compatibility)._

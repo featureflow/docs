@@ -326,6 +326,7 @@ val featureflow = FeatureflowClient.initialize(
 | `maxEventQueueSize` | `Int` | `1000` | Events held in memory between flushes; beyond this, further events are dropped. |
 | `timeoutMillis` | `Int` | `10_000` | Connect and read timeout in milliseconds. |
 | `logger` | `FeatureflowLogger?` | `null` | Diagnostics sink. Null by default — an SDK should not write to your logcat uninvited. |
+| `application` | `String?` | `null` | Names this app (e.g. `"android-app"`) so the dashboard can attribute SDK usage and flag evaluations to it — see [Application Tags](/application-tags). |
 | `baseUrl` | `String` | `https://app.featureflow.io` | Where evaluations are fetched from. |
 | `eventsUrl` | `String` | `https://events.featureflow.io` | Where impression and goal events are posted. |
 

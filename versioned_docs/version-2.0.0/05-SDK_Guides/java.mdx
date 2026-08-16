@@ -41,6 +41,20 @@ FeatureflowClient featureflow = FeatureflowClient.builder(apiKey).build();
 The `FeatureflowClient` should be instantiated once and reused throughout your application. If using Spring, configure it as a `@Bean` in a `@Configuration` class.
 :::
 
+### Naming your application
+
+Optionally name this workload so the dashboard can attribute SDK usage and flag evaluations to it:
+
+```java
+FeatureflowClient featureflow = FeatureflowClient.builder(apiKey)
+    .withConfig(FeatureflowConfig.builder()
+        .withApplication("checkout-api")
+        .build())
+    .build();
+```
+
+The `FEATUREFLOW_APPLICATION` environment variable is used when the option is not set in code. See [Application Tags](/application-tags) for the naming rules and what the tag powers.
+
 ### Evaluate a Feature
 
 Check the value of a feature flag in your code:

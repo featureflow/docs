@@ -310,6 +310,7 @@ let featureflow = await FeatureflowClient.initialize(
 | `maxEventQueueSize` | `Int` | `1000` | Events held in memory between flushes; beyond this the oldest are dropped. |
 | `timeout` | `TimeInterval` | `10` | Request timeout in seconds. |
 | `logger` | `FeatureflowLogging?` | `nil` | Diagnostics sink. Nil by default — an SDK should not write to your console uninvited. |
+| `application` | `String?` | `nil` | Names this app (e.g. `"my-ios-app"`) so the dashboard can attribute SDK usage and flag evaluations to it — see [Application Tags](/application-tags). |
 | `baseURL` | `URL` | `https://app.featureflow.io` | Where evaluations are fetched from. |
 | `eventsURL` | `URL` | `https://events.featureflow.io` | Where impression and goal events are posted. |
 

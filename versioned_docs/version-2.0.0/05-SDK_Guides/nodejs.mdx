@@ -154,6 +154,19 @@ export FEATUREFLOW_SERVER_KEY=sdk-srv-env-YOUR_API_KEY
 const featureflow = new Featureflow.Client();
 ```
 
+## Naming Your Application
+
+Optionally name this workload so the dashboard can attribute SDK usage and flag evaluations to it:
+
+```javascript
+const featureflow = new Featureflow.Client({
+  apiKey: 'sdk-srv-env-YOUR_API_KEY',
+  application: 'checkout-api'
+});
+```
+
+The `FEATUREFLOW_APPLICATION` environment variable is used when the option is not set in code. See [Application Tags](/application-tags) for the naming rules and what the tag powers.
+
 ## Express Integration
 
 For Express applications, initialize the client once at startup:

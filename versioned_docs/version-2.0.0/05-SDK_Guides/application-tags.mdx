@@ -1,0 +1,151 @@
+---
+title: Application Tags
+sidebar_label: Application Tags
+slug: /application-tags
+---
+
+# Application Tags
+
+"Which of our services is actually using this flag?" One environment key is usually shared by
+several workloads — a checkout API, a couple of background workers, a web app — and by default
+their SDK traffic all looks the same. When a flag is a cleanup candidate, or a spike of SDK
+requests needs explaining, you want the traffic broken down by the thing that sent it.
+
+Setting `application` in your SDK configuration does exactly that. The SDK sends the name as an
+`X-Featureflow-Application` header on every request it makes, and the dashboard uses it in two
+places:
+
+- **[Administration → SDKs](/Admin/sdks)** — the Applications table breaks SDK usage down per
+  application: impressions, distinct clients, the SDKs each application runs, and when it was
+  last seen.
+- **The "Evaluated by" card** on each feature's [Statistics tab](/feature-statistics) — which
+  applications evaluated this flag, so you know exactly which codebases to clean up before
+  archiving it.
+
+Traffic from SDK instances that do not send a name shows up as **Unattributed**.
+
+## Naming rules
+
+The name is a slug: lowercase letters, numbers, `.`, `_` and `-`, at most 64 characters.
+
+- Case is forgiven — `Checkout-API` is sent as `checkout-api`.
+- An otherwise invalid value is dropped with a warning, and no tag is sent. The SDK keeps
+  working normally either way.
+
+Name the workload, not the environment or the machine — the dashboard already knows the
+environment, and `checkout-api` stays useful across deploys in a way `prod-web-3` does not.
+
+## It never affects evaluation
+
+The tag is write-only telemetry. It is not a targeting attribute, it never changes which variant
+is served, and adding, changing or removing it is always safe. If you want to target rules by
+application, put an attribute on the [user](/targeting-features) instead.
+
+## Setting it in each SDK
+
+### Server SDKs
+
+Every server SDK also reads the `FEATUREFLOW_APPLICATION` environment variable, so you can tag a
+deployment without touching code. A value set in code wins over the environment variable.
+
+**Java** — `withApplication` on the config builder:
+
+```java
+FeatureflowClient featureflow = FeatureflowClient.builder(apiKey)
+    .withConfig(FeatureflowConfig.builder()
+        .withApplication("checkout-api")
+        .build())
+    .build();
+```
+
+**Node.js** — an `application` option on the client:
+
+```javascript
+const featureflow = new Featureflow.Client({
+  apiKey: FEATUREFLOW_SERVER_KEY,
+  application: 'checkout-api'
+});
+```
+
+**Go** — an `Application` field on `Config`:
+
+```go
+client, _ := featureflow.Client("sdk-srv-env-YOUR_KEY", featureflow.Config{
+    Application: "checkout-api",
+})
+```
+
+**Python** — an `application` keyword argument:
+
+```python
+featureflow = Featureflow(
+    os.environ["FEATUREFLOW_SERVER_KEY"],
+    application="checkout-api",
+)
+```
+
+**Ruby** — an `application` option (also settable as `config.application` in a
+`Featureflow.configure` block):
+
+```ruby
+featureflow = Featureflow::Client.new(api_key: FEATUREFLOW_SERVER_KEY,
+                                      application: 'checkout-api')
+```
+
+**.NET** — `WithApplication` on the config builder:
+
+```csharp
+var config = new FeatureflowConfigBuilder()
+    .WithApplication("checkout-api")
+    .Build();
+```
+
+### Client SDKs
+
+Client SDKs take the name in configuration only — there is no environment variable in a browser
+or a shipped app binary.
+
+**JavaScript** — an `application` property on the init config:
+
+```javascript
+const featureflow = Featureflow.init(FF_KEY, user, { application: 'web-app' });
+```
+
+**React** — pass it through the provider's `config`:
+
+```tsx
+<FeatureflowProvider
+  apiKey="sdk-js-env-YOUR_KEY"
+  user={user}
+  config={{ application: 'web-app' }}
+>
+```
+
+**React Native** — the same `config` prop:
+
+```tsx
+<FeatureflowProvider
+  apiKey="sdk-js-env-YOUR_KEY"
+  config={{ application: 'mobile-app' }}
+>
+```
+
+**iOS** — a property on `FeatureflowConfig`:
+
+```swift
+var config = FeatureflowConfig()
+config.application = "my-ios-app"
+```
+
+**Android** — a `FeatureflowConfig` field:
+
+```kotlin
+val config = FeatureflowConfig(application = "android-app")
+```
+
+## Seeing the results
+
+Once tagged instances start sending traffic, the [Administration → SDKs](/Admin/sdks) view breaks
+usage down per application, and each feature's Statistics tab shows which applications evaluated
+it. Counts are based on SDK event and registration traffic, so a freshly tagged instance appears
+after it reports its first events.

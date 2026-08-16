@@ -1,0 +1,61 @@
+---
+title: Admin SDKs
+description: See which SDK versions, applications and clients are using your account
+sidebar_label: SDKs
+slug: sdks
+---
+
+# Admin SDKs
+
+The SDKs tab shows what is actually connecting to your account: which SDK versions are in the
+wild, which of your applications the traffic comes from, and which client IPs send the most of
+it. Use it to find instances stuck on an old SDK version, to see which workloads a flag change
+will reach, and to explain where your SDK request volume comes from.
+
+![Admin SDKs](/img/2-0/admin-sdks.png)
+
+## Time window and filter
+
+The **24 hours / 7 days / 30 days** toggle sets the window for everything on the page; it
+defaults to 7 days. The filter box narrows all three tables at once — it matches SDK names,
+versions, application names and IPs.
+
+The header shows the number of **distinct client IPs** seen in the window. IPs are NAT/egress
+addresses, so one IP can hide many instances behind it.
+
+## SDK versions
+
+One row per SDK and version, with impressions, distinct clients and when it was last seen. This
+is the table to check before relying on a recent SDK feature: an old version still appearing
+here means an instance somewhere has not been upgraded.
+
+## Applications
+
+Usage broken down by [application tag](/application-tags): each application's impressions,
+distinct clients, the SDKs it runs, and when it was last seen.
+
+Traffic from SDK instances that do not send an application name is collected into an
+**Unattributed** row, which always sorts last — it is the leftover bucket, not a workload. To
+attribute it, set `application` in the SDK configuration of whatever is sending it; [Application
+Tags](/application-tags) has the one-line config for every SDK. Until at least one instance
+sends a name, the table is replaced by a hint telling you the same thing.
+
+## Top clients
+
+The highest-traffic client IPs, with the SDKs and applications seen behind each one. Browser SDK
+traffic is aggregated into a single **Web browsers** row rather than tracked per visitor IP.
+When there are more client IPs than the table shows, a note gives the total and the table holds
+the top ones by impressions.
+
+## Where the data comes from
+
+The view is based on SDK event and registration traffic over the selected window. Instances that
+poll for configuration but never register or report events are not shown — an SDK with events
+disabled does not appear here, even though it is serving flags. **Last seen** times are hourly
+and in UTC, because the underlying data is bucketed by hour.
+
+## Per-flag attribution
+
+The same application data powers the **Evaluated by** card on each feature's
+[Statistics tab](/feature-statistics), which lists the applications that evaluated that specific
+flag — the thing to check before archiving it.

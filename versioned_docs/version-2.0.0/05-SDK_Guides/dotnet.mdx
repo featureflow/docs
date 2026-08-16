@@ -360,6 +360,7 @@ var client = await FeatureflowClientFactory.CreateAsync("sdk-srv-env-YOUR_KEY", 
 | `WithConnectionTimeout(TimeSpan)` | 30 seconds | Timeout for REST calls, and the longest start-up will wait for the first ruleset. |
 | `WithGetFeaturesMethod(GetFeaturesMethod)` | `Sse` | How updates arrive — see below. |
 | `WithOffline(bool)` | `false` | No network calls at all; every flag serves its failover variant. For tests. |
+| `WithApplication(string)` | `FEATUREFLOW_APPLICATION` env var, or unset | Names this workload (e.g. `checkout-api`) so the dashboard can attribute SDK usage and flag evaluations to it — see [Application Tags](/application-tags). |
 | `WithBaseUri(uri)` | `https://app.featureflow.io` | Where the ruleset is fetched from when polling. |
 | `WithStreamBaseUri(uri)` | `https://rtm.featureflow.io` | Where the update stream is opened when streaming. |
 

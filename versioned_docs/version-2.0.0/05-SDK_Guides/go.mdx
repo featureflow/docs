@@ -225,6 +225,7 @@ failover is usually `on`.
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `WithFeatures` | `[]FeatureRegistration` | `nil` | Features to register on startup, and the failover variant each one serves when no configuration is available. |
+| `Application` | `string` | `""` | Names this workload (e.g. `checkout-api`) so the dashboard can attribute SDK usage and flag evaluations to it. Falls back to the `FEATUREFLOW_APPLICATION` environment variable — see [Application Tags](/application-tags). |
 | `DisableEvents` | `bool` | `false` | Stop sending evaluation events. Also suppresses feature registration, since that is sent over the same channel. |
 | `Logger` | `*log.Logger` | writes to `os.Stderr` with the prefix `Featureflow:` | Where the SDK writes diagnostics. Lines are tagged `[info]` or `[error]`. Supply your own to route them into your logging stack. |
 | `FeatureStore` | `FeatureStore` | in-memory store | Where the polled ruleset is held. Implement `Get`/`Set`/`SetAll` to substitute your own. |

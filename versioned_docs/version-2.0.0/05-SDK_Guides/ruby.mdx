@@ -414,6 +414,7 @@ end
 | `event_endpoint` | `https://events.featureflow.io` | Where registrations and evaluation events are posted. |
 | `disable_events` | `false` | Stop all event traffic — no feature registration, no evaluation events. |
 | `with_features` | `[]` | Pre-registered features and their failover variants. |
+| `application` | `ENV['FEATUREFLOW_APPLICATION']` | Names this workload (e.g. `checkout-api`) so the dashboard can attribute SDK usage and flag evaluations to it — see [Application Tags](/application-tags). |
 | `logger` | `Logger.new(STDOUT)` at `WARN` | Where the SDK writes diagnostics. Point it at `Rails.logger`. |
 
 The poll interval is fixed at 10 seconds and is not configurable, so a change made in the dashboard
