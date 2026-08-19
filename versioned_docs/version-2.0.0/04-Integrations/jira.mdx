@@ -12,6 +12,12 @@ This integration is for Jira Cloud only.
 
 With Featureflow's Jira integration, you can view and link feature flags directly from Jira's Development Panel. Any Jira issue IDs linked to your feature flags will automatically sync to appear in Jira.
 
+:::tip Using the legacy Jira app?
+If your Jira site has **Featureflow – Feature Flags for Jira (Legacy)** installed, see
+[Migrating from the legacy Jira app](#migrating-from-the-legacy-jira-app) below — migration takes a few
+minutes and keeps all of your existing Jira issue links.
+:::
+
 ## Installation
 
 ### 1. Generate Integration Token in Featureflow
@@ -51,6 +57,28 @@ Paste your integration token and click **Connect to FeatureFlow**.
 Once connected, you'll see a success message.
 
 ![Connected](/img/2-0/admin-integrations-jira-featureflow-config-connected.png)
+
+## Migrating from the legacy Jira app
+
+**Featureflow – Feature Flags for Jira (Legacy)** is the earlier Atlassian Connect app that worked with
+the old per-domain Featureflow sites (`yourdomain.featureflow.io`). The current app connects to
+[app.featureflow.com](https://app.featureflow.com) and replaces it.
+
+To migrate:
+
+1. In Jira, go to **Settings** → **Apps** → **Manage apps** and uninstall
+   **Featureflow – Feature Flags for Jira (Legacy)**.
+2. Follow the [installation steps](#installation) above: generate an integration token at
+   [app.featureflow.com](https://app.featureflow.com/admin/integrations), install the new Featureflow app
+   from the Atlassian Marketplace, paste the token in **FeatureFlow Configuration** and click
+   **Connect to FeatureFlow**.
+
+Your Jira issue links are stored in Featureflow, not in the Jira app, so uninstalling the legacy app does
+not delete them. When the new app connects, every existing link is automatically re-synced and reappears
+in Jira's Development Panel.
+
+The legacy app's **Create flag** and **Link flag** buttons opened your old `yourdomain.featureflow.io`
+site; after migrating, they open [app.featureflow.com](https://app.featureflow.com).
 
 ## Linking Features to Jira Issues
 
