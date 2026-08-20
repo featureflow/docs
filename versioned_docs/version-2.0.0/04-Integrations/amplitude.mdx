@@ -1,0 +1,119 @@
+---
+title: Amplitude Integration
+sidebar_label: Amplitude
+slug: /amplitude-integration
+---
+
+# Amplitude Integration
+
+Connect Featureflow to Amplitude so that every flag change appears as a chart annotation — giving you instant context when you're investigating a metric movement.
+
+## Overview
+
+When the integration is enabled, Featureflow posts an annotation to the Amplitude [Chart Annotations API](https://www.docs.developers.amplitude.com/analytics/apis/chart-annotations-api/) each time a feature flag changes state (rollout percentage, targeting rules, lifecycle status, etc.). The annotation is visible on every Amplitude chart in the project, grouped under the **"Feature flags"** category.
+
+## Prerequisites
+
+- An Amplitude account with at least one project
+- An **API key** and **secret key** for the Amplitude project (found in Amplitude → Settings → Projects → your project → General)
+- Featureflow Administrator access
+
+## Setup
+
+1. In Featureflow, go to **Administration → Integrations**.
+2. Click **Add integration** and choose **Amplitude**.
+3. Enter your Amplitude **API key** and **secret key**.
+4. Choose the **data residency region** that matches your Amplitude account: **US** or **EU**.
+5. *(Optional)* Set an **environment filter** to restrict annotations to specific environments (e.g. `production` only).
+6. Click **Save**, then use the **Send test annotation** button to confirm the connection.
+
+The test button displays the raw response from Amplitude so you can diagnose any credential or permission issues immediately.
+
+Once saved, the integration card shows an **Installed** badge and a **Delivering** status for each configured connection:
+
+![The Amplitude integration card showing Installed and Delivering statuses](/img/2-0/integrations-amplitude-connected.png)
+
+## What triggers an annotation
+
+Featureflow sends an annotation when any of the following occur on a feature flag:
+
+| Change type | Example |
+|---|---|
+| Rollout percentage updated | 0 % → 50 % |
+| Targeting rule added, edited, or removed | New segment targeting rule |
+| Lifecycle status changed | Draft → Active, Active → Archived |
+| Flag enabled or disabled | Kill-switch toggled |
+
+Annotations include the flag key, the environment name, the type of change, and the Featureflow user who made the change.
+
+In Amplitude, the annotations appear on the chart's date axis — click one to see the full details of each flag change:
+
+![Amplitude chart annotations showing Featureflow flag changes](/img/2-0/integrations-amplitude-annotation.png)
+
+## Annotation payload
+
+Featureflow sends the following JSON body to the Amplitude annotations API:
+
+```json
+{
+  "label": "Flag changed: my-flag (production)",
+  "details": "Rollout updated 0% → 50% by jane@example.com",
+  "start_time": 1724112000000,
+  "category_name": "Feature flags"
+}
+```
+
+- `start_time` is a Unix timestamp in milliseconds (UTC).
+- `category_name` is always `"Feature flags"` — you can filter or hide this category in Amplitude's chart settings.
+
+## Data residency
+
+| Region | Amplitude endpoint used |
+|---|---|
+| US | `https://amplitude.com/api/2/annotations` |
+| EU | `https://analytics.eu.amplitude.com/api/2/annotations` |
+
+Select the region that matches where your Amplitude data is stored. Selecting the wrong region will result in authentication errors.
+
+## Failure behaviour
+
+If Amplitude returns a non-2xx response, Featureflow logs the error and continues normal operation — the flag change is never blocked. Failed annotations are not retried automatically. You can re-trigger a test send from the integration settings page to verify connectivity after fixing any credential issues.
+
+## REST API reference
+
+You can also manage the Amplitude integration via the Featureflow REST API.
+
+### Create or update
+
+```
+PUT /api/v1/integrations/amplitude
+Authorization: Bearer <api-token>
+Content-Type: application/json
+
+{
+  "apiKey": "your-amplitude-api-key",
+  "secretKey": "your-amplitude-secret-key",
+  "region": "US",                  // "US" or "EU"
+  "environmentFilter": ["production"]  // omit to send for all environments
+}
+```
+
+### Delete
+
+```
+DELETE /api/v1/integrations/amplitude
+Authorization: Bearer <api-token>
+```
+
+### Test
+
+```
+POST /api/v1/integrations/amplitude/test
+Authorization: Bearer <api-token>
+```
+
+Returns the raw Amplitude API response body and HTTP status code.
+
+---
+
+Any problems? Reach us via the in-app chat or at support@featureflow.io.
