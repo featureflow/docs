@@ -105,6 +105,20 @@ Every `evaluate(key)` call then:
 
 Because events go through your Amplitude instance, they carry your Amplitude user and device identity automatically — there is no user-id mapping to configure, and anonymous pre-login events merge into the identified user as usual. Exposures are **deduplicated per user, flag and variant** for the page's lifetime, so calling `evaluate()` on every render will not inflate your Amplitude event volume; a variant or user change sends a fresh exposure.
 
+### Send only the flags you're experimenting with
+
+Most flags are operational — kill switches, infra toggles — and every exposure is billed Amplitude event volume plus a user-property slot. From `featureflow-client` 2.5.0, the `flags` option limits exposures to the flags you actually analyse:
+
+```js
+// An explicit allowlist…
+amplitudeIntegration(amplitude, { flags: ['checkout-v2', 'pricing-test'] })
+
+// …or a predicate — handy with a flag naming convention
+amplitudeIntegration(amplitude, { flags: (key) => key.startsWith('exp-') })
+```
+
+Omitted, every flag sends (the default); an empty array sends none. The filter gates both the `$exposure` event and the `featureflow_<flagKey>` user property.
+
 ![Exposure events and per-flag user properties on an Amplitude user profile](/img/2-0/integrations-amplitude-exposure-events.png)
 
 Using a different analytics tool? Listen to the raw evaluation event and send whatever shape your tool expects:
