@@ -131,6 +131,8 @@ featureflow.on('EVALUATION', ({ key, variant, value, user }) => {
 
 The `EVALUATION` event fires synchronously on every `evaluate(key)` call (`evaluateAll()` does not fire it), and a listener that throws is logged and swallowed — it can never break flag evaluation.
 
+Server-side, the Node SDK (from `featureflow-node-sdk` 0.9.0) emits an equivalent raw `evaluation` event — `{ key, variant, value, user }`, fired each time a variant is read — that you can forward to any tool's server API with your own user-id mapping. See the [Node SDK README](https://github.com/featureflow/featureflow-node-sdk#forwarding-evaluations-to-analytics-tools).
+
 ## REST API reference
 
 Outbound destinations, including Amplitude, are managed under the admin integrations API. All calls require an `api-` personal access token with administrator access; the organisation is always taken from the token, never from the request body.
