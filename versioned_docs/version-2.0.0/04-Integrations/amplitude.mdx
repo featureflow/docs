@@ -6,11 +6,14 @@ slug: /amplitude-integration
 
 # Amplitude Integration
 
-Connect Featureflow to Amplitude so that every flag change appears as a chart annotation — giving you instant context when you're investigating a metric movement.
+Connect Featureflow to Amplitude in two complementary ways:
+
+1. **Flag changes → chart annotations** — every flag change appears as a marker on your Amplitude charts, giving you instant context when you're investigating a metric movement.
+2. **Flag evaluations → exposure events** — the JavaScript SDK sends `$exposure` events through your own Amplitude instance, so you can run A/B analysis in Amplitude Experiment without any extra tooling. See [A/B testing with exposure events](#ab-testing-send-flag-exposures-to-amplitude) below.
 
 ## Overview
 
-When the integration is enabled, Featureflow posts an annotation to the Amplitude [Chart Annotations API](https://www.docs.developers.amplitude.com/analytics/apis/chart-annotations-api/) each time a feature flag changes state (rollout percentage, targeting rules, lifecycle status, etc.). The annotation is visible on every Amplitude chart in the project, grouped under the **"Feature flags"** category.
+When the integration is enabled, Featureflow posts an annotation to the Amplitude [Chart Annotations API](https://amplitude.com/docs/apis/analytics/chart-annotations) each time a feature flag changes state (rollout percentage, targeting rules, lifecycle status, etc.). The annotation is visible on every Amplitude chart in the project, grouped under the **"Feature flags"** category.
 
 ## Prerequisites
 
@@ -25,9 +28,9 @@ When the integration is enabled, Featureflow posts an annotation to the Amplitud
 3. Enter your Amplitude **API key** and **secret key**.
 4. Choose the **data residency region** that matches your Amplitude account: **US** or **EU**.
 5. *(Optional)* Set an **environment filter** to restrict annotations to specific environments (e.g. `production` only).
-6. Click **Save**, then use the **Send test annotation** button to confirm the connection.
+6. Click **Save**, then use the **Send test event** button to confirm the connection.
 
-The test button displays the raw response from Amplitude so you can diagnose any credential or permission issues immediately.
+The test send goes through the real delivery path and reports the outcome — including the HTTP status Amplitude returned — so you can diagnose any credential or region issues immediately.
 
 Once saved, the integration card shows an **Installed** badge and a **Delivering** status for each configured connection:
 
@@ -56,63 +59,112 @@ Featureflow sends the following JSON body to the Amplitude annotations API:
 
 ```json
 {
-  "label": "Flag changed: my-flag (production)",
-  "details": "Rollout updated 0% → 50% by jane@example.com",
-  "start_time": 1724112000000,
-  "category_name": "Feature flags"
+  "label": "Jane Rivers updated Checkout v2 in production",
+  "start": "2026-08-20T06:52:38+00:00",
+  "details": "Feature: Checkout v2 (checkout-v2)\nEnvironment: production\nProject: web\nChanged by: Jane Rivers\n\nhttps://app.featureflow.com/projects/web/features/checkout-v2/targeting/production",
+  "category": "Feature flags"
 }
 ```
 
-- `start_time` is a Unix timestamp in milliseconds (UTC).
-- `category_name` is always `"Feature flags"` — you can filter or hide this category in Amplitude's chart settings.
+- `start` is the moment the change happened, in ISO 8601 (UTC).
+- `category` is always `"Feature flags"` — you can filter or hide this category in Amplitude's chart settings. Featureflow creates the category in your project automatically on the first delivery.
+- No `chart_id` is sent, which makes the annotation **global**: it appears on every chart in the project.
 
 ## Data residency
 
 | Region | Amplitude endpoint used |
 |---|---|
-| US | `https://amplitude.com/api/2/annotations` |
-| EU | `https://analytics.eu.amplitude.com/api/2/annotations` |
+| US | `https://amplitude.com/api/3/annotations` |
+| EU | `https://analytics.eu.amplitude.com/api/3/annotations` |
 
 Select the region that matches where your Amplitude data is stored. Selecting the wrong region will result in authentication errors.
 
 ## Failure behaviour
 
-If Amplitude returns a non-2xx response, Featureflow logs the error and continues normal operation — the flag change is never blocked. Failed annotations are not retried automatically. You can re-trigger a test send from the integration settings page to verify connectivity after fixing any credential issues.
+If Amplitude returns a non-2xx response, Featureflow retries once, then records the failure — the flag change itself is never blocked or delayed. The most recent delivery outcome (success or the error Amplitude returned) is shown next to the integration in **Administration → Integrations**, and you can re-trigger a test send from there to verify connectivity after fixing any credential issues.
+
+## A/B testing: send flag exposures to Amplitude
+
+Annotations tell you *when a flag changed*; exposure events tell you *which users experienced which variant* — the assignment data Amplitude Experiment needs to run A/B analysis. The Featureflow JavaScript SDK (from `featureflow-client` 2.4.1, or `react-featureflow-client` 2.4.1) sends these through **your own Amplitude instance** in one line:
+
+```js
+import Featureflow, { amplitudeIntegration } from 'featureflow-client';
+import * as amplitude from '@amplitude/unified';
+
+amplitude.initAll('YOUR-AMPLITUDE-API-KEY');
+
+const featureflow = await Featureflow.init('your-js-client-key', {
+  integrations: [amplitudeIntegration(amplitude)]
+});
+```
+
+Every `evaluate(key)` call then:
+
+- sends a **`$exposure`** event with `flag_key` and `variant` — the event Amplitude Experiment reads natively, so experiment analysis works with no configuration;
+- sets a **`featureflow_<flagKey>`** user property via the Identify API, so *any* chart can be segmented by variant (disable with `amplitudeIntegration(amplitude, { identify: false })`).
+
+Because events go through your Amplitude instance, they carry your Amplitude user and device identity automatically — there is no user-id mapping to configure, and anonymous pre-login events merge into the identified user as usual. Exposures are **deduplicated per user, flag and variant** for the page's lifetime, so calling `evaluate()` on every render will not inflate your Amplitude event volume; a variant or user change sends a fresh exposure.
+
+![Exposure events and per-flag user properties on an Amplitude user profile](/img/2-0/integrations-amplitude-exposure-events.png)
+
+Using a different analytics tool? Listen to the raw evaluation event and send whatever shape your tool expects:
+
+```js
+featureflow.on('EVALUATION', ({ key, variant, value, user }) => {
+  // e.g. posthog.capture('$feature_flag_called', { $feature_flag: key, $feature_flag_response: variant });
+});
+```
+
+The `EVALUATION` event fires synchronously on every `evaluate(key)` call (`evaluateAll()` does not fire it), and a listener that throws is logged and swallowed — it can never break flag evaluation.
 
 ## REST API reference
 
-You can also manage the Amplitude integration via the Featureflow REST API.
+Outbound destinations, including Amplitude, are managed under the admin integrations API. All calls require an `api-` personal access token with administrator access; the organisation is always taken from the token, never from the request body.
 
-### Create or update
+### Create
 
 ```
-PUT /api/v1/integrations/amplitude
+POST /api/v1/admin/integrations/outbound
 Authorization: Bearer <api-token>
 Content-Type: application/json
 
 {
-  "apiKey": "your-amplitude-api-key",
-  "secretKey": "your-amplitude-secret-key",
-  "region": "US",                  // "US" or "EU"
-  "environmentFilter": ["production"]  // omit to send for all environments
+  "type": "amplitude",
+  "enabled": true,
+  "configuration": {
+    "amplitude": {
+      "apiKey": "your-amplitude-api-key",
+      "secretKey": "your-amplitude-secret-key",
+      "region": "US",
+      "filter": { "environmentIds": ["<environment-id>"] }
+    }
+  }
 }
 ```
+
+`region` is `"US"` or `"EU"`. Omit `filter` (or leave `environmentIds` empty) to send changes from every environment. The keys are **write-only** — they are accepted on create and update but never returned in any response.
+
+### Update
+
+```
+PUT /api/v1/admin/integrations/outbound/{id}
+```
+
+Same body as create. Leaving `apiKey` or `secretKey` blank keeps the stored value.
 
 ### Delete
 
 ```
-DELETE /api/v1/integrations/amplitude
-Authorization: Bearer <api-token>
+DELETE /api/v1/admin/integrations/outbound/{id}
 ```
 
 ### Test
 
 ```
-POST /api/v1/integrations/amplitude/test
-Authorization: Bearer <api-token>
+POST /api/v1/admin/integrations/outbound/{id}/test
 ```
 
-Returns the raw Amplitude API response body and HTTP status code.
+Sends a synthetic flag change through the real delivery path and returns the integration with its delivery status fields (`lastDeliveryAt`, `lastDeliverySuccess`, `lastDeliveryDetail`).
 
 ---
 
