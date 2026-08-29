@@ -93,6 +93,13 @@ Click the delete icon in the Actions column to remove an environment. This actio
 
 The confirmation dialog tells you whether an SDK is still talking to the environment before you commit — an environment that was contacted in the last week is flagged in red, because deleting it disconnects that SDK immediately: its API keys stop working and every flag falls back to its coded default.
 
+### Compare environments and copy targeting
+
+Click **Compare environments** on the project's Environments tab to see, feature by feature,
+whether two environments evaluate the same and to copy targeting from one to the other — with
+the same permission and approval gates as editing directly. See
+[Compare environments and copy targeting](/compare-environments).
+
 ### Is anything still using this environment?
 
 Featureflow records a connection stamp every time an SDK makes an authenticated request to an environment — including silent configuration polls that never evaluate a flag — so the **Last SDK connection** column reflects real traffic, not just flag changes. It shows the SDK that last connected (for example `NodeJsClient/0.9.0`) and how long ago.
