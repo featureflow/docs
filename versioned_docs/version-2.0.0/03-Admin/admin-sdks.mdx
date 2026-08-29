@@ -14,6 +14,33 @@ will reach, and to explain where your SDK request volume comes from.
 
 ![Admin SDKs](/img/2-0/admin-sdks.png)
 
+## Connections by environment
+
+The first card answers the most basic question — *which environments are SDKs actually talking
+to?* — with one row per environment across all your projects, most recently contacted first:
+
+- **Last SDK connection** — **Active** (contacted within 7 days), **Idle** (within 90 days),
+  **Inactive** (older) or **No SDK connection**, with the age of the newest evidence.
+- **Last SDK** — the identifier the last SDK sent (for example `NodeJsClient/0.9.0`) and whether
+  it authenticated with a **server** key (secret, sent in a header) or a **client** key (public,
+  sent in the URL).
+- **First connected** and **Last flag evaluation** — when the environment was first contacted,
+  and when a flag was last evaluated in it.
+
+Unlike the tables below, this card is recorded on *every* authenticated SDK request, including
+configuration polls, so an instance that never registers or reports events still shows up here.
+Connection tracking began in August 2026; for older activity the last flag evaluation is used
+instead. The same verdict appears on each project's Environments tab and in the
+delete-environment dialog — see
+[Is anything still using this environment?](projects-and-environments#is-anything-still-using-this-environment).
+
+## SDK traffic at a glance
+
+Below the connections card, four summary tiles give the headline figures for the selected
+window — **Impressions** reported, **Distinct client IPs**, **SDK versions in use** and
+**Applications** sending an application name — followed by one card each for SDK versions,
+applications and top clients.
+
 ## Time window and filter
 
 The **24 hours / 7 days / 30 days** toggle sets the window for everything on the page; it
@@ -51,8 +78,9 @@ the top ones by impressions.
 
 The view is based on SDK event and registration traffic over the selected window. Instances that
 poll for configuration but never register or report events are not shown — an SDK with events
-disabled does not appear here, even though it is serving flags. **Last seen** times are hourly
-and in UTC, because the underlying data is bucketed by hour.
+disabled does not appear here, even though it is serving flags — use
+[Connections by environment](#connections-by-environment) to see those. **Last seen** times are
+hourly and in UTC, because the underlying data is bucketed by hour.
 
 ## Per-flag attribution
 
