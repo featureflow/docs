@@ -1,0 +1,64 @@
+---
+title: A/B testing with your analytics tool
+sidebar_label: A/B testing
+slug: /ab-testing
+---
+
+# A/B testing with your analytics tool
+
+Featureflow does the half of an A/B test that a flag system is already built for — deciding which variant each user gets, deterministically, and holding that split still — and hands the *analysis* to the analytics tool you already trust. You do not learn a new statistics UI, and you do not send Featureflow your conversion data.
+
+The loop:
+
+1. **Create a multivariate flag** with the variants you want to compare and a percentage split between them ([manage variants](/manage-feature-variants), [gradual rollouts](/gradual-rollouts)). Featureflow buckets each user by the ID you choose, so the same user gets the same variant on every request and in every service that passes the same ID.
+2. **Send exposures to your analytics tool** from the JavaScript SDK. An exposure is "this user saw this variant of this flag" — the assignment data an experiment report needs. One line of config does it:
+
+   ```js
+   import Featureflow, { exposureIntegration } from 'featureflow-client';
+
+   const featureflow = await Featureflow.init('your-js-client-key', {
+     integrations: [
+       exposureIntegration(({ key, variant }) => {
+         // the event your tool expects — see the per-tool pages below
+       })
+     ]
+   });
+   ```
+
+3. **Track goals in the analytics tool** exactly as you already do — sign-ups, purchases, retention. Nothing changes on that side.
+4. **Read the result in the tool's experiment report**, segmented by variant. Then roll the winner out to 100 % with the same flag ([progressive rollout](/gradual-rollouts)).
+
+## Per-tool recipes
+
+Each page below wires `exposureIntegration` to that tool's **native experiment convention**, so its own experiment analysis works without custom charts:
+
+| Tool | Page | What Featureflow sends |
+|---|---|---|
+| Amplitude | [Amplitude](/amplitude-integration#ab-testing-send-flag-exposures-to-amplitude) | `$exposure` — built-in `amplitudeIntegration(amplitude)`, plus flag-change chart annotations |
+| Mixpanel | [Mixpanel](/mixpanel-integration) | `$experiment_started` |
+| PostHog | [PostHog](/posthog-integration) | `$feature_flag_called` |
+| Segment | [Segment](/segment-integration) | `Experiment Viewed` (A/B Testing spec) — fans out to every Segment destination |
+| Google Analytics 4 | [Google Analytics](/google-analytics-integration) | a custom event plus a user property per flag |
+
+Any other tool: `exposureIntegration` takes a function, so the event shape is whatever you write.
+
+## What `exposureIntegration` does for you
+
+- **Deduplicates** exposures per user, flag and variant for the page's lifetime. `evaluate()` runs on every render in component code and every analytics event is billed volume; without deduping, a render loop inflates your bill and your exposure counts. A variant or user change sends a fresh exposure, which is exactly when the analysis needs one.
+- **Filters flags.** Most flags are operational — kill switches, infra toggles. `{ flags: ['checkout-v2'] }` or `{ flags: (key) => key.startsWith('exp-') }` limits exposures to the flags you actually analyse. Omitted sends every flag; `[]` sends none.
+- **Never breaks evaluation.** An integration that throws is logged and swallowed; the flag still evaluates.
+- **Uses your tool's identity.** Events go through your own analytics SDK instance, so they carry your user and device identity — there is no user-id mapping between Featureflow and the tool.
+
+Available from `featureflow-client` 2.6.0 and `react-featureflow-client` 2.6.0 (React re-exports it).
+
+## Server-side
+
+The Node SDK (from `featureflow-node-sdk` 0.9.0) emits a raw `evaluation` event — `{ key, variant, value, user }` — each time a variant is read. Forward it to your tool's server API with your own user-id mapping; see the [Node SDK README](https://github.com/featureflow/featureflow-node-sdk#forwarding-evaluations-to-analytics-tools). Server-side you decide which of your ids is the analytics user id, which is why there is no built-in adapter there.
+
+## Check the split before you trust the result
+
+The feature's [statistics tab](/feature-statistics) shows evaluation counts per variant. If you configured an even split and one variant is answering a fraction of the traffic, the experiment is broken — usually a targeting rule above the split rule is matching first — and no amount of analysis downstream will fix it.
+
+---
+
+Any problems? Reach us via the in-app chat or at support@featureflow.io.

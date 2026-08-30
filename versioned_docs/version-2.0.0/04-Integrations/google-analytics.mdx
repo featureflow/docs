@@ -1,0 +1,59 @@
+---
+title: Google Analytics Integration
+sidebar_label: Google Analytics
+slug: /google-analytics-integration
+---
+
+# Google Analytics (GA4) Integration
+
+Send Featureflow flag exposures to Google Analytics 4 as a custom event plus a **user property per flag**, so you can build audiences and compare conversions by variant in GA4's own reports and explorations. See [A/B testing with your analytics tool](/ab-testing) for the whole loop.
+
+## Setup
+
+GA4 has no built-in experiment event, so the recipe does two things: a `flag_exposure` event for the moment of exposure, and a user property so every later event and session from that user carries the variant.
+
+```js
+import Featureflow, { exposureIntegration } from 'featureflow-client';
+
+// gtag('config', 'G-XXXXXXX') is already on the page
+
+const featureflow = await Featureflow.init('your-js-client-key', {
+  integrations: [
+    exposureIntegration(({ key, variant }) => {
+      gtag('event', 'flag_exposure', { flag_key: key, variant });
+      gtag('set', 'user_properties', { [`ff_${key}`]: variant });
+    })
+  ]
+});
+```
+
+Exposures go through **your** gtag on the page, so they carry your GA4 client id and user id — no user-id mapping needed — and are deduplicated per user, flag and variant for the page's lifetime, so calling `evaluate()` on every render will not inflate your GA4 event volume.
+
+### Send only the flags you're experimenting with
+
+GA4 limits each property to 25 custom user properties, and user property **names are limited to 24 characters** (values to 36). Flag keys often exceed that, so limit exposures to the flags you analyse and give them short names:
+
+```js
+const experiments = { 'checkout-v2': 'ff_checkout', 'pricing-test': 'ff_pricing' };
+
+exposureIntegration(({ key, variant }) => {
+  gtag('event', 'flag_exposure', { flag_key: key, variant });
+  gtag('set', 'user_properties', { [experiments[key]]: variant });
+}, { flags: Object.keys(experiments) })
+```
+
+## In GA4
+
+1. **Admin → Custom definitions → Create custom dimension** with scope **User** and the user property name you send (for example `ff_checkout`). Do the same with scope **Event** for `variant` if you want the exposure event itself in reports.
+2. Build a **comparison** or an **audience** on the user-scoped dimension — `ff_checkout = b` versus `ff_checkout = a` — and apply it to any conversion report or exploration.
+3. GA4 does not compute significance; export to BigQuery or use your own test if you need a p-value.
+
+## Notes
+
+- User properties set with `gtag('set', 'user_properties', …)` apply to events sent *after* the call on that page, and persist for the user in GA4's reporting.
+- Available from `featureflow-client` 2.6.0 / `react-featureflow-client` 2.6.0. On older versions, listen to the raw `EVALUATION` event and dedupe yourself.
+- Server-side, the Node SDK emits a raw `evaluation` event you can forward to the GA4 Measurement Protocol with your own client id — see the [Node SDK README](https://github.com/featureflow/featureflow-node-sdk#forwarding-evaluations-to-analytics-tools).
+
+---
+
+Any problems? Reach us via the in-app chat or at support@featureflow.io.

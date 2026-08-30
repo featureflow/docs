@@ -121,15 +121,17 @@ Omitted, every flag sends (the default); an empty array sends none. The filter g
 
 ![Exposure events and per-flag user properties on an Amplitude user profile](/img/2-0/integrations-amplitude-exposure-events.png)
 
-Using a different analytics tool? Listen to the raw evaluation event and send whatever shape your tool expects:
+Using a different analytics tool? `amplitudeIntegration` is built on the generic `exposureIntegration` (from `featureflow-client` 2.6.0), which gives any tool the same deduplication and `flags` filter — you write only the event:
 
 ```js
-featureflow.on('EVALUATION', ({ key, variant, value, user }) => {
-  // e.g. posthog.capture('$feature_flag_called', { $feature_flag: key, $feature_flag_response: variant });
-});
+import Featureflow, { exposureIntegration } from 'featureflow-client';
+
+exposureIntegration(({ key, variant }) => {
+  posthog.capture('$feature_flag_called', { $feature_flag: key, $feature_flag_response: variant });
+}, { flags: (key) => key.startsWith('exp-') })
 ```
 
-The `EVALUATION` event fires synchronously on every `evaluate(key)` call (`evaluateAll()` does not fire it), and a listener that throws is logged and swallowed — it can never break flag evaluation.
+Ready-made recipes: [Mixpanel](/mixpanel-integration), [PostHog](/posthog-integration), [Segment](/segment-integration) and [Google Analytics](/google-analytics-integration) — or see [A/B testing with your analytics tool](/ab-testing) for the whole loop. Underneath, the raw `EVALUATION` event fires synchronously on every `evaluate(key)` call (`evaluateAll()` does not fire it); a listener that throws is logged and swallowed — it can never break flag evaluation.
 
 Server-side, the Node SDK (from `featureflow-node-sdk` 0.9.0) emits an equivalent raw `evaluation` event — `{ key, variant, value, user }`, fired each time a variant is read — that you can forward to any tool's server API with your own user-id mapping. See the [Node SDK README](https://github.com/featureflow/featureflow-node-sdk#forwarding-evaluations-to-analytics-tools).
 

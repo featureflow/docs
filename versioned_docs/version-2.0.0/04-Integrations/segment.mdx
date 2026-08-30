@@ -1,0 +1,68 @@
+---
+title: Segment Integration
+sidebar_label: Segment
+slug: /segment-integration
+---
+
+# Segment Integration
+
+Send Featureflow flag exposures through Segment as `Experiment Viewed` events — Segment's [A/B Testing spec](https://segment.com/docs/connections/spec/ab-testing/) — and every destination connected to your Segment source receives them in the shape it already understands. One integration, many tools. See [A/B testing with your analytics tool](/ab-testing) for the whole loop.
+
+## Setup
+
+The A/B Testing spec defines one event, `Experiment Viewed`, with four string properties: `experiment_id`, `experiment_name`, `variation_id` and `variation_name`. A Featureflow flag key serves as both experiment id and name, and a variant key as both variation id and name:
+
+```js
+import Featureflow, { exposureIntegration } from 'featureflow-client';
+import { AnalyticsBrowser } from '@segment/analytics-next';
+
+const analytics = AnalyticsBrowser.load({ writeKey: 'YOUR-SEGMENT-WRITE-KEY' });
+
+const featureflow = await Featureflow.init('your-js-client-key', {
+  integrations: [
+    exposureIntegration(({ key, variant }) => {
+      analytics.track('Experiment Viewed', {
+        experiment_id: key,
+        experiment_name: key,
+        variation_id: variant,
+        variation_name: variant
+      });
+    })
+  ]
+});
+```
+
+Exposures go through **your** Segment instance, so they carry your Segment `userId` / `anonymousId` — no user-id mapping needed — and are deduplicated per user, flag and variant for the page's lifetime, so calling `evaluate()` on every render will not inflate your Segment volume.
+
+### Segment every downstream report by variant
+
+To slice reports by variant in destinations that support user traits, also set a trait:
+
+```js
+exposureIntegration(({ key, variant }) => {
+  analytics.track('Experiment Viewed', { experiment_id: key, experiment_name: key, variation_id: variant, variation_name: variant });
+  analytics.identify({ [`featureflow_${key}`]: variant });
+})
+```
+
+### Send only the flags you're experimenting with
+
+```js
+exposureIntegration(send, { flags: ['checkout-v2', 'pricing-test'] })
+// or a naming convention
+exposureIntegration(send, { flags: (key) => key.startsWith('exp-') })
+```
+
+## In your destinations
+
+Destinations that implement the A/B Testing spec map `Experiment Viewed` to their own experiment event automatically — for example Amplitude, Mixpanel and others listed on the [spec page](https://segment.com/docs/connections/spec/ab-testing/). For a destination without a mapping, the event still arrives as a normal track call you can chart.
+
+## Notes
+
+- If you use Segment *and* one of the tools with a direct recipe ([Amplitude](/amplitude-integration), [Mixpanel](/mixpanel-integration), [PostHog](/posthog-integration)), pick one path per tool so exposures are not sent twice.
+- Available from `featureflow-client` 2.6.0 / `react-featureflow-client` 2.6.0. On older versions, listen to the raw `EVALUATION` event and dedupe yourself.
+- Server-side, the Node SDK emits a raw `evaluation` event you can forward with `@segment/analytics-node` using your own `userId` — see the [Node SDK README](https://github.com/featureflow/featureflow-node-sdk#forwarding-evaluations-to-analytics-tools).
+
+---
+
+Any problems? Reach us via the in-app chat or at support@featureflow.io.

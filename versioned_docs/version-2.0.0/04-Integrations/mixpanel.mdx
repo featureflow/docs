@@ -1,0 +1,71 @@
+---
+title: Mixpanel Integration
+sidebar_label: Mixpanel
+slug: /mixpanel-integration
+---
+
+# Mixpanel Integration
+
+Send Featureflow flag exposures to Mixpanel as `$experiment_started` events, and Mixpanel's **Experiments** report analyses your A/B test — with Featureflow deciding who is in which arm. See [A/B testing with your analytics tool](/ab-testing) for the whole loop.
+
+## Setup
+
+Mixpanel's Experiments report reads a `$experiment_started` event with two string properties, `Experiment name` and `Variant name`. The JavaScript SDK's `exposureIntegration` sends one per user, flag and variant:
+
+```js
+import Featureflow, { exposureIntegration } from 'featureflow-client';
+import mixpanel from 'mixpanel-browser';
+
+mixpanel.init('YOUR-MIXPANEL-PROJECT-TOKEN');
+
+const featureflow = await Featureflow.init('your-js-client-key', {
+  integrations: [
+    exposureIntegration(({ key, variant }) => {
+      mixpanel.track('$experiment_started', {
+        'Experiment name': key,
+        'Variant name': variant
+      });
+    })
+  ]
+});
+```
+
+Every `evaluate(key)` call then sends the exposure through **your** Mixpanel instance, so it carries your Mixpanel distinct id — no user-id mapping needed. Exposures are deduplicated per user, flag and variant for the page's lifetime, so calling `evaluate()` on every render will not inflate your Mixpanel event volume.
+
+### Segment every report by variant
+
+To slice *any* Mixpanel report by variant, not just the Experiments report, also set a user profile property:
+
+```js
+exposureIntegration(({ key, variant }) => {
+  mixpanel.track('$experiment_started', { 'Experiment name': key, 'Variant name': variant });
+  mixpanel.people.set({ [`featureflow_${key}`]: variant });
+})
+```
+
+### Send only the flags you're experimenting with
+
+Most flags are operational and every exposure is billed Mixpanel event volume. Limit exposures to the flags you analyse:
+
+```js
+exposureIntegration(send, { flags: ['checkout-v2', 'pricing-test'] })
+// or a naming convention
+exposureIntegration(send, { flags: (key) => key.startsWith('exp-') })
+```
+
+## In Mixpanel
+
+1. Open **Experiments** (under Reports) and pick the experiment named after your flag key; the variants are your Featureflow variant keys.
+2. Choose the metric to compare — a conversion event you already track.
+
+If you would rather use a different event or property name, Mixpanel lets you change what the Experiments report recognises under **Settings → Project → Experimentation**; the recipe above uses the defaults.
+
+## Notes
+
+- `Experiment name` and `Variant name` must be strings — Featureflow flag keys and variant keys already are.
+- Available from `featureflow-client` 2.6.0 / `react-featureflow-client` 2.6.0. On older versions, listen to the raw `EVALUATION` event and dedupe yourself.
+- Server-side, the Node SDK emits a raw `evaluation` event you can forward to Mixpanel's HTTP API with your own distinct id — see the [Node SDK README](https://github.com/featureflow/featureflow-node-sdk#forwarding-evaluations-to-analytics-tools).
+
+---
+
+Any problems? Reach us via the in-app chat or at support@featureflow.io.

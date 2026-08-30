@@ -1,0 +1,61 @@
+---
+title: PostHog Integration
+sidebar_label: PostHog
+slug: /posthog-integration
+---
+
+# PostHog Integration
+
+Send Featureflow flag exposures to PostHog as `$feature_flag_called` events — the event PostHog experiments use to decide who was exposed to which variant — with Featureflow deciding the assignment. See [A/B testing with your analytics tool](/ab-testing) for the whole loop.
+
+## Setup
+
+PostHog counts a user as exposed to an experiment when it receives a `$feature_flag_called` event whose `$feature_flag` matches the experiment's flag key and whose `$feature_flag_response` is a variant. The JavaScript SDK's `exposureIntegration` sends one per user, flag and variant:
+
+```js
+import Featureflow, { exposureIntegration } from 'featureflow-client';
+import posthog from 'posthog-js';
+
+posthog.init('YOUR-POSTHOG-PROJECT-KEY', { api_host: 'https://us.i.posthog.com' });
+
+const featureflow = await Featureflow.init('your-js-client-key', {
+  integrations: [
+    exposureIntegration(({ key, variant }) => {
+      posthog.capture('$feature_flag_called', {
+        $feature_flag: key,
+        $feature_flag_response: variant,
+        [`$feature/${key}`]: variant
+      });
+      // Attach the variant to every later event from this user, so metric events
+      // can be attributed when the experiment uses a custom exposure event.
+      posthog.register({ [`$feature/${key}`]: variant });
+    })
+  ]
+});
+```
+
+Exposures go through **your** PostHog instance, so they carry your PostHog distinct id and person — no user-id mapping needed — and are deduplicated per user, flag and variant for the page's lifetime, so calling `evaluate()` on every render will not inflate your PostHog event volume.
+
+### Send only the flags you're experimenting with
+
+```js
+exposureIntegration(send, { flags: ['checkout-v2', 'pricing-test'] })
+// or a naming convention
+exposureIntegration(send, { flags: (key) => key.startsWith('exp-') })
+```
+
+## In PostHog
+
+1. Create an **Experiment** whose feature flag key is the **same key as your Featureflow flag**, with variant keys matching your Featureflow variant keys (for example `control` and `test`). The flag lives in Featureflow — you do not need to roll it out in PostHog; PostHog only needs the key to match incoming exposures.
+2. Pick your goal metrics — events you already capture.
+3. PostHog attributes each user to the variant in their exposure event; metric events do not need any flag property when the experiment uses the default `$feature_flag_called` exposure. The `$feature/<key>` property registered above is what PostHog requires if you switch the experiment to a **custom exposure event**.
+
+## Notes
+
+- Variant keys must match on both sides — PostHog reports by the `$feature_flag_response` value it receives.
+- Available from `featureflow-client` 2.6.0 / `react-featureflow-client` 2.6.0. On older versions, listen to the raw `EVALUATION` event and dedupe yourself.
+- Server-side, the Node SDK emits a raw `evaluation` event you can forward with `posthog-node`'s `capture()` using your own distinct id — see the [Node SDK README](https://github.com/featureflow/featureflow-node-sdk#forwarding-evaluations-to-analytics-tools).
+
+---
+
+Any problems? Reach us via the in-app chat or at support@featureflow.io.
