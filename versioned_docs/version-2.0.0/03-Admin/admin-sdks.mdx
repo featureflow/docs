@@ -37,15 +37,22 @@ delete-environment dialog — see
 ## SDK traffic at a glance
 
 Below the connections card, four summary tiles give the headline figures for the selected
-window — **Impressions** reported, **Distinct client IPs**, **SDK versions in use** and
+window — **Flag impressions** reported, **Distinct client IPs**, **SDK versions in use** and
 **Applications** sending an application name — followed by one card each for SDK versions,
 applications and top clients.
 
+Impressions are flag evaluations your SDKs report in their events. They are **not** the SDK
+requests counted on the [Billing](/billing) page, which are HTTP calls to Featureflow
+(configuration polls, client evaluations, events and registrations). A server SDK evaluates
+flags in memory and only polls for configuration, so its impressions and its requests bear no
+fixed relationship — the two totals are not meant to match.
+
 ## Time window and filter
 
-The **24 hours / 7 days / 30 days** toggle sets the window for everything on the page; it
-defaults to 7 days. The filter box narrows all three tables at once — it matches SDK names,
-versions, application names and IPs.
+The **24 hours / 7 days / 30 days / This month** toggle sets the window for everything on the
+page; it defaults to 7 days. **This month** is the calendar month to date (UTC), the same
+window as the "SDK requests this month" card on Billing. The filter box narrows all three
+tables at once — it matches SDK names, versions, application names and IPs.
 
 The header shows the number of **distinct client IPs** seen in the window. IPs are NAT/egress
 addresses, so one IP can hide many instances behind it.
