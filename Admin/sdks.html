@@ -7,8 +7,8 @@
 <link rel="preconnect" href="https://www.googletagmanager.com">
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-4S76ENL11R"></script>
 <script>function gtag(){dataLayer.push(arguments)}window.dataLayer=window.dataLayer||[],gtag("js",new Date),gtag("config","G-4S76ENL11R",{anonymize_ip:!0})</script><link rel="stylesheet" href="/assets/css/styles.a877fc12.css">
-<script src="/assets/js/runtime~main.156cb328.js" defer="defer"></script>
-<script src="/assets/js/main.8f19eaeb.js" defer="defer"></script>
+<script src="/assets/js/runtime~main.e3e07024.js" defer="defer"></script>
+<script src="/assets/js/main.cac14f48.js" defer="defer"></script>
 </head>
 <body class="navigation-with-keyboard">
 <svg style="display: none;"><defs>
@@ -40,13 +40,19 @@ delete-environment dialog — see
 <a class="" href="/Admin/projects-and-environments#is-anything-still-using-this-environment">Is anything still using this environment?</a>.</p>
 <h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="sdk-traffic-at-a-glance">SDK traffic at a glance<a href="#sdk-traffic-at-a-glance" class="hash-link" aria-label="Direct link to SDK traffic at a glance" title="Direct link to SDK traffic at a glance" translate="no">​</a></h2>
 <p>Below the connections card, four summary tiles give the headline figures for the selected
-window — <strong>Impressions</strong> reported, <strong>Distinct client IPs</strong>, <strong>SDK versions in use</strong> and
+window — <strong>Flag impressions</strong> reported, <strong>Distinct client IPs</strong>, <strong>SDK versions in use</strong> and
 <strong>Applications</strong> sending an application name — followed by one card each for SDK versions,
 applications and top clients.</p>
+<p>Impressions are flag evaluations your SDKs report in their events. They are <strong>not</strong> the SDK
+requests counted on the <a class="" href="/Admin/billing">Billing</a> page, which are HTTP calls to Featureflow
+(configuration polls, client evaluations, events and registrations). A server SDK evaluates
+flags in memory and only polls for configuration, so its impressions and its requests bear no
+fixed relationship — the two totals are not meant to match.</p>
 <h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="time-window-and-filter">Time window and filter<a href="#time-window-and-filter" class="hash-link" aria-label="Direct link to Time window and filter" title="Direct link to Time window and filter" translate="no">​</a></h2>
-<p>The <strong>24 hours / 7 days / 30 days</strong> toggle sets the window for everything on the page; it
-defaults to 7 days. The filter box narrows all three tables at once — it matches SDK names,
-versions, application names and IPs.</p>
+<p>The <strong>24 hours / 7 days / 30 days / This month</strong> toggle sets the window for everything on the
+page; it defaults to 7 days. <strong>This month</strong> is the calendar month to date (UTC), the same
+window as the &quot;SDK requests this month&quot; card on Billing. The filter box narrows all three
+tables at once — it matches SDK names, versions, application names and IPs.</p>
 <p>The header shows the number of <strong>distinct client IPs</strong> seen in the window. IPs are NAT/egress
 addresses, so one IP can hide many instances behind it.</p>
 <h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="sdk-versions">SDK versions<a href="#sdk-versions" class="hash-link" aria-label="Direct link to SDK versions" title="Direct link to SDK versions" translate="no">​</a></h2>
