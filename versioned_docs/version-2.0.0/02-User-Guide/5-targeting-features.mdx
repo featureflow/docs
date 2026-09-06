@@ -33,6 +33,8 @@ Every feature has a failover rule — the catch-all "else" rule at the bottom. I
 
 The comparators offered depend on the attribute's data type. Values are compared strictly by type — a text comparator never matches a number, and a number comparator never matches text, so make sure the attribute your application sends has the type you expect.
 
+The values suggested when you type a value come from the users your SDKs have already identified. See [User Contexts](/user-contexts) to browse those values, and to remove any bad ones that are polluting the suggestions.
+
 **Text**
 
 | Comparator | Matches when the attribute… |
