@@ -4,158 +4,132 @@ sidebar_label: Javascript Client
 slug: /javascript-client
 ---
 
-Get your Featureflow account at [featureflow.com](https://www.featureflow.com)
 Github: https://github.com/featureflow/featureflow-javascript-sdk
 
-## Examples
+`featureflow-client` is the Featureflow SDK for code that runs in a browser. It fetches already-evaluated flag values for the current user, caches them in localStorage, and reports impressions and goals back to Featureflow.
 
-Codepen: https://codepen.io/featureflow/pen/BboreK
+Uses a **client** SDK key (`sdk-js-env-…`), which is public by design. Find it on the Projects page by clicking the key icon next to your environment.
+
+:::note
+Version 2.x targets modern browsers and evaluates flags for one user at a time. For React use the [ReactJS Client](/reactjs-client); for Node.js servers use the [Node.js SDK](/nodejs-sdk). If you need to support legacy browsers, use the [1.3.18 client](https://www.npmjs.com/package/featureflow-client/v/1.3.18).
+:::
 
 ## Installation
 
-Using NPM
 ```bash
-$ npm install --save featureflow-client
+npm install --save featureflow-client
 ```
 
-Using bower
-```bash
-$ bower install featureflow-client
-```
-
-## Usage
-
-### Adding Featureflow
-
-##### Webpack
-If you are using `webpack`, you can require the code using
-```js
-var Featureflow = require('featureflow-client');
-```
-or using es6 syntax
 ```js
 import Featureflow from 'featureflow-client';
 ```
 
-##### Bower
-Include the following script in HTML file. This will expose the global variable `Featureflow`
-```html
-<script crossorigin="anonymous" src="bower_components/featureflow-client/dist/featureflow.min.js"></script>
-```
-
-:::note
-Note: It is recommended to use build tools to manage your bower dependencies.
-Please see the [bower website](https://bower.io/#use-packages) for more details.
-:::
-##### CDN
-Include the following script in HTML file. This will expose the global variable `Featureflow`
+Or, without a bundler, load the UMD build from a CDN. It exposes a global `Featureflow`:
 
 ```html
-<script crossorigin="anonymous" src="https://cdn.featureflow.io/featureflow.js"></script>
+<script crossorigin="anonymous" src="https://unpkg.com/featureflow-client@2/dist/featureflow.umd.min.js"></script>
 ```
 
-##### Realtime events and EventSource
-Featureflow uses EventSource for realtime streaming of feature updates. If you wish to target a browser that doesn't natively support EventSource, we recommend using a polyfill such as [this one](https://github.com/Yaffle/EventSource).
+## Getting started
 
-You can either require/include the polyfill in your application,
+### 1. Initialise one client
+
+`init` returns a promise that resolves once the first evaluation has landed, so awaiting it before you render flag-driven UI avoids a flash of the wrong variant. Create the client once, keep it in a module, and import it wherever you need it. A second `init` on the same page means duplicate polling and duplicate impression events.
 
 ```js
-//for example
-import 'event-source-polyfill';
-```
+import Featureflow from 'featureflow-client';
 
-or include it in your `<head>` of your html file before you load the Featureflow client.
-
-```html
-<script src="https://cdnjs.cloudflare.com/ajax/libs/event-source-polyfill/0.0.9/eventsource.js"></script>
-```
-
-
-### Quick start
-
-Get your environment's Featureflow Javascript API key and initialise a new Featureflow client
-
-```js
-var FF_JS_API_KEY = '<Your javascript api key goes here>';
-//...
-var featureflow = Featureflow.init(FF_JS_API_KEY);
-```
-
-This will load the value of each feature for the current environment specified by the api key. These values can be toggled on and off at `https://<your-org-key>.featureflow.io`
-
-**Note: You are responsible for passing the featureflow client instance around your application**
-
-### Evaluate a feature
-
-In your code, you can test the value of your feature where the value of `my-feature-key` is equal to `'on'`
-```js
-  if (featureflow.evaluate('my-feature-key').is('on')){
-    // this feature code will be run because 'my-feature-key' is set to 'on'
-  }
-```
-
-Because the default variants for any feature are `'on'` and `'off'`, we have provided two helper methods `.isOn()` and `.isOff()`
-
-```js
-
-if(featureflow.evaluate('my-feature-key').isOn()){
-  // this feature code will be run because 'my-feature-key' is set to 'on'
-}
-
-if(featureflow.evaluate('my-feature-key').isOff()){
-  // this feature code won't be run because 'my-feature-key' is not set to 'off'
-}
-```
-### User context values
-
-You can include user context information when you initialise featureflow, these attributes can be used in feature targeting rules:
-
-```js
-var user = {
-  id: 'user123',
-  attributes:{
+const user = {
+  id: 'user-123',
+  attributes: {
     tier: 'gold',
     country: 'australia',
-      roles: ['role1', 'role3']
+    roles: ['beta']
   }
 };
-var featureflow = Featureflow.init(FF_KEY, user);
 
+const featureflow = await Featureflow.init('sdk-js-env-YOUR_KEY', user);
 ```
 
-Additional configuration can be set during init also. You can set offline mode for test environments or local development and provide a default set of feature values, for example:
+`user` is optional. Without it the SDK generates an anonymous id, keeps it in localStorage and, unless `useCookies` is `false`, sets an `ff-anonymous-id` cookie. The id is what percentage rollouts bucket on, so use your own account id for signed-in users.
+
+### 2. Evaluate a flag
+
+Evaluation is synchronous against values the server has already computed for this user:
 
 ```js
-var featureflow = Featureflow.init(FF_KEY, user, {
-    offline: true,
-    defaultFeatures: {
-      'feature-1': 'on',
-      'feature-2': 'red',
-      'test': 'off'
-    },
+const checkout = featureflow.evaluate('new-checkout');
+
+if (checkout.isOn()) {
+  showNewCheckout();
+} else {
+  showLegacyCheckout();
+}
+```
+
+Multivariate flags use `is(variant)` or `value()`:
+
+```js
+const layout = featureflow.evaluate('pricing-layout');
+
+if (layout.is('compact')) renderCompact();
+console.log(layout.value()); // 'compact'
+```
+
+`value()` falls back to `config.defaultFeatures[key]`, then `'off'`. `getFeatures()` returns every evaluated flag as `{ key: variant }`.
+
+### 3. Update the user on login and logout
+
+`updateUser` re-evaluates every flag for the new user and resolves when done. Call it on login, on logout, and whenever an attribute used in targeting changes:
+
+```js
+await featureflow.updateUser({
+  id: loggedInUser.id,
+  attributes: { tier: loggedInUser.tier, country: loggedInUser.country }
+});
+
+// On logout, back to an anonymous user:
+await featureflow.updateUser();
+```
+
+## TypeScript
+
+The package ships its own types:
+
+```ts
+import { init, events } from 'featureflow-client';
+import type { FeatureflowClient, FeatureflowUser, Config, EvaluatedFeatures } from 'featureflow-client';
+
+const featureflow: FeatureflowClient = await init('sdk-js-env-YOUR_KEY', user);
+```
+
+## Configuration
+
+Pass `config` as the third argument to `init` (or the second, if you have no user). Everything is optional:
+
+```js
+const featureflow = await Featureflow.init('sdk-js-env-YOUR_KEY', user, {
+  defaultFeatures: { 'new-checkout': 'off', 'kill-switch-payments': 'on' },
+  application: 'web-app'
 });
 ```
 
-Further documentation can be found [here](http://docs.featureflow.io/docs)
+| Property | Default | Description |
+|---|---|---|
+| `defaultFeatures` | `{}` | Variants to serve when Featureflow cannot be reached and nothing is cached. Anything unlisted is `off`. Set it for any flag whose wrong-way default would be harmful. |
+| `offline` | `false` | Make no network calls and serve `defaultFeatures` only. For tests and local development. |
+| `application` | `undefined` | Names this site or app so the dashboard can attribute SDK usage and evaluations to it. See [Application Tags](/application-tags). |
+| `useCookies` | `true` | Set to `false` to stop the `ff-anonymous-id` cookie. You must then pass the anonymous id to your server yourself. |
+| `disableEvents` | `false` | Stop sending impression and goal events while still fetching flags. |
+| `delayInit` | `false` | Return the client without fetching. You must call `featureflow.initialise()` yourself. |
+| `integrations` | `[]` | Analytics exposure listeners. See [A/B testing](/ab-testing). |
+| `baseUrl`, `eventsUrl` | Featureflow hosts | Only change for self-hosted or proxied setups. |
 
-### JSON Configuration Values
+## JSON configuration values
 
 _Requires `featureflow-client >= 2.2.0` — see [SDK Compatibility](/sdk-compatibility)._
 
-If a variant has a [JSON config value](/manage-feature-variants#json-configuration-values) set in the dashboard, use `jsonValue()` to read it:
-
-```js
-var evaluation = featureflow.evaluate('checkout-theme');
-var config = evaluation.jsonValue();
-
-if (config) {
-  applyTheme(config.color, config.layout);
-}
-```
-
-`jsonValue()` returns `undefined` if the resolved variant has no JSON config set. It's independent of `value()`/`is()`/`isOn()`/`isOff()`, which continue to work with the plain variant key string — calling `jsonValue()` never changes what those return.
-
-TypeScript users can pass a generic to type the result:
+If a variant has a [JSON config value](/manage-feature-variants#json-configuration-values) set in the dashboard, `jsonValue()` returns it. It is `undefined` when the variant has none, so always provide a fallback:
 
 ```ts
 interface ThemeConfig {
@@ -163,227 +137,68 @@ interface ThemeConfig {
   layout: string;
 }
 
-const config = featureflow.evaluate('checkout-theme').jsonValue<ThemeConfig>();
+const theme = featureflow.evaluate('checkout-theme').jsonValue<ThemeConfig>();
+applyTheme(theme?.color ?? '#000000');
 ```
 
+`jsonValue()` never changes what `value()`, `is()`, `isOn()` or `isOff()` return.
 
-#### Anonymous User and Featureflow Server SDKs
-In some instances you will want to split test a feature with anonymous users that spans both client and server code.
-The `featureflow` client generates a unique anonymous key for the user which can be shared with your server requests.
-There are a couple of ways you can do this.
-##### 1. Access the cookie `ff-anonymous-id`
-Anytime the anonymous user is updated the `featureflow` client will set the `ff-anonymous-id` cookie.
-If request server is on the same \[sub\]domain and it doesn't have a user id you should use this cookie.
-##### 2. Pass the value into the request yourself
-If you cannot use cookies (e.g. api on a separate \[sub\]domain), you can pass the anonymous id directly into the request.
-Here are some examples of how you can do this:
-1. Using HTTP Header: `headers["X-Featureflow-Anonymous-Id"] = featureflow.getAnonymousId()`
-2. Adding a query param: `'?ff-anonymousid='+featureflow.getAnonymousId()`
+## Goals and experiments
 
-### Update the user when a user logs in
-Typically you would want to update the user information when a user logs in or out of your web site. You can do this with the 'featureflow.updateUser()' method
+Track a goal against the current user. The optional second argument is a number (the metric value) or an object whose optional `value` is the metric value and whose other properties are sent as custom data:
 
-```javascript
-var u = myLoggedInUser; //on return from your login function
-var user = {
-    id: u.id
-    attributes:{
-        tier: u.tier, //eg. 'gold'
-        country: u.country, //eg 'UK'
-        organisation: u.organisationId, //e.g '1234567'
-        language: 'en_GB'
-    }
-};
-featureflow.updateUser(user);
+```js
+featureflow.track('signup');
+featureflow.track('purchase', 49.95);
+featureflow.track('purchase', { value: 49.95, plan: 'pro' });
 ```
-when the user logs out, clear the user, either call:
-`featureflow.updateUser();`
-or you may wish to reset to an anonymous user with other values.
 
-### API and Configuration
-#### Globals
-#### `Featureflow.init(apiKey, [user], [config])`
-Returns a `featureflow` instance, see below
+Fire the goal where the conversion happens, and for every variant including the control. `featureflow.goal(key)` still works but is deprecated. To analyse experiments in your own analytics tool instead, see [A/B testing](/ab-testing) for the Amplitude, Mixpanel, PostHog, Segment and Google Analytics integrations.
 
-| Params | Type | Default | Description |
-|---------------|----------|--------------|----------------------------------------------------------------|
-| `apiKey*` | `string` | **`Required`** | The Featureflow Javascript API key for the environment or project you are targeting |
-| `user` | `user` |  | See the `user` object below |
-| `config` | `config` |  | See the `config` object below |
-| **`return`** | `featureflow` |  | See Featureflow Instance below |
+## Events
 
-####Featureflow Instance
-These properties are available on the return of `Featureflow.init(...)`
-#### `featureflow.evaluate(featureKey)`
-Returns an object that can be used to help evaluate feature values in an expressive way.
-##### `featureflow.evaluate(featureKey).is(value)`
-Evaluates the value of a feature for the given user.
+Subscribe with `on` and unsubscribe with `off`. Always unsubscribe when a component is torn down.
 
-| Params | Type | Default | Description |
-|---------------|----------|--------------|----------------------------------------------------------------|
-| `featureKey*`  | `string` | **`Required`** | The feature key you are targeting |
-| `value*`  | `string` | **`Required`** | The value you are testing against |
-| **`return`** | `boolean` | | `true` if the feature's value is equal to the `value` provided, otherwise `false`  |
+```js
+import { events } from 'featureflow-client';
 
+featureflow.on(events.INIT, (features) => {
+  // Flags evaluated and loaded. Fires after init and after every updateUser.
+});
+featureflow.on(events.LOADED_FROM_CACHE, (features) => {
+  // Cached values from localStorage, available before the network responds.
+});
+featureflow.on(events.ERROR, (error) => {
+  // The fetch failed; cached or default values are being served.
+});
+```
 
-##### `featureflow.evaluate(featureKey).isOn()`
-Evaluates the value of a feature for the given user is equal to `'on'`.
+`featureflow.hasReceivedInitialResponse()` reports whether the first server response has arrived. `events.LOADED` is a deprecated alias of `INIT`.
 
-| Params | Type | Default | Description |
-|---------------|----------|--------------|----------------------------------------------------------------|
-| `featureKey*`  | `string` | **`Required`** | The feature key you are targeting |
-| **`return`** | `boolean` | | `true` if the feature's value is equal to `'on'` provided, otherwise `false`  |
+## Sharing an anonymous user with your server
 
+For an experiment that spans browser and server code, both sides must evaluate the same user id or they will disagree about which variant the user is in. For signed-in users that is your account id. For anonymous users, share the SDK's id:
 
-##### `featureflow.evaluate(featureKey).isOff()`
-Evaluates the value of a feature for the given user is equal to `'off'`.
+- **Same domain**: read the `ff-anonymous-id` cookie server-side.
+- **Different domain**: send it yourself, as the `X-Featureflow-Anonymous-Id` header or a `ff-anonymousid` query parameter, using `featureflow.getAnonymousId()`.
 
-| Params | Type | Default | Description |
-|---------------|----------|--------------|----------------------------------------------------------------|
-| `featureKey*`  | `string` | **`Required`** | The feature key you are targeting |
-| **`return`** | `boolean` | | `true` if the feature's value is equal to `'off'` provided, otherwise `false`  |
+`resetAnonymousId()` issues a new id, for example on logout so the signed-out user leaves the account's buckets. It does not re-evaluate, so follow it with `updateUser()`.
 
-##### `featureflow.evaluate(featureKey).value()`
-Returns the value of a feature for the given user.
+## Testing
 
-| Params | Type | Default | Description |
-|---------------|----------|--------------|----------------------------------------------------------------|
-| `featureKey*`  | `string` | **`Required`** | The feature key you are targeting |
-| **`return`** | `string` | | The value of the feature, or the default feature value from `config.defaultFeatures[featureKey]` if present, or `'off'`  |
+Run offline with fixed variants. No network calls, deterministic results, and both branches are testable by changing `defaultFeatures`:
 
-##### `featureflow.evaluate(featureKey).jsonValue()`
-Returns the evaluated variant's JSON config value, if one is set in the dashboard.
+```js
+const featureflow = await Featureflow.init('test', {
+  offline: true,
+  defaultFeatures: { 'new-checkout': 'on' }
+});
+```
 
-| Params | Type | Default | Description |
-|---------------|----------|--------------|----------------------------------------------------------------|
-| `featureKey*`  | `string` | **`Required`** | The feature key you are targeting |
-| **`return`** | `object \| undefined` | | The variant's JSON config value, or `undefined` if it has none |
+Write a test for each branch. An untested `off` branch is the usual reason a rollout gets reverted.
 
-#### `featureflow.goal(goalKey)`
-Sends a goal event, along with the current evaluated features to **featureflow.io**. Use with experiments in the admin console.
+## Further reading
 
-| Params | Type | Default | Description |
-|---------------|----------|--------------|----------------------------------------------------------------|
-| `goalKey*` | `string` |  | The key of the goal you want to target. |
-
-#### `featureflow.updateUser(user, [callback])`
-Updates the current `user` of the instance and reevaluates all feature features using the new `user`.
-
-| Params | Type | Default | Description |
-|---------------|----------|--------------|----------------------------------------------------------------|
-| `user` | `user` | ... | See the `user` object below |
-
-Fires a `Featureflow.events.LOADED` event when the features have been evaluated.
-Also Fires the callback if provided with the newly evaluated features.
-
-
-#### `featureflow.getFeatures()`
-Returns the current evaluated `features` as flat key-value map
-
-| Params | Type | Default | Description |
-|---------------|----------|--------------|----------------------------------------------------------------|
-| **`return`**  | `object` |  | The current `features` object |
-
-#### `featureflow.getUser()`
-Returns the current `user`
-
-| Params | Type | Default | Description |
-|---------------|----------|--------------|----------------------------------------------------------------|
-| **`return`**  | `user` |  | The current `user`  |
-
-
-#### `featureflow.on(event, callback, [bindContext])`
-Listen to events when the `featureflow` instance is updated
-
-| Params | Type | Default | Description |
-|---------------|----------|--------------|----------------------------------------------------------------|
-| `event*`  | `string` | **`Required`** | The name of the event to subscribe to. See `Events` section below for available events. |
-| `callback*`  | `function` | **`Required`** | The function to call when the event is emitted.  |
-| `bindContext`  | `any` | `undefined` | The context to bind the event callback to.  |
-
-
-#### `featureflow.off(event, [callback])`
-Listen to events when the `featureflow` instance is updated
-
-| Params | Type | Default | Description |
-|---------------|----------|--------------|----------------------------------------------------------------|
-| `event*`  | `string` | **`Required`** | The name of the event to unsubscribe from. |
-| `callback`  | `function` | **`Required`** | The callback used when binding the object  |
-
-
-#### `featureflow.getAnonymousId()`
-Returns the anonymous user id assigned for the user in localStorage.
-
-| Params | Type | Default | Description |
-|---------------|----------|--------------|----------------------------------------------------------------|
-| **`return`**  | `string` |  | The string of the anonymous user id in localStorage. |
-
-#### `featureflow.hasReceivedInitialResponse()`
-Returns true if an initial response has been returned from the server, regardless of the status code.
-
-| Params | Type | Default | Description |
-|---------------|----------|--------------|----------------------------------------------------------------|
-| **`return`**  | `boolean` | false | `true` if the initial request to featureflow has completed  |
-
-
-#### `featureflow.resetAnonymousId()`
-Resets the anonymous user id for the user stored in localStorage. This will not re-evaluate the features, you must still call `updateUser()` to evaluate the latest features variants.
-
-
-| Params | Type | Default | Description |
-|---------------|----------|--------------|----------------------------------------------------------------|
-| **`return`**  | `string` |  | The string of the **new** anonymous user id. |
-
-#### Object Types
-#### `user`
-| Property | Type | Default | Description |
-|---------------|----------|--------------|----------------------------------------------------------------|
-| `id` | `string` | `'anonymous:**********'` | Uniquely identifies the current user. Also used to calculate split variants. If not provided a random string prefixed with `'anonymous:'` will be used. This will set a cookie that can be used to link the anonymous user with your server's Featureflow SDK. |
-| `attributes` | `object` | `undefined` | Flat key-value object containing extra meta about the current user. Used to serve different features for specifically targeted attributes.
-
-#### `config`
-| Property | Type | Default | Description |
-|---------------|----------|--------------|----------------------------------------------------------------|
-| `streaming` | `boolean` | `false` | Set to `true` when calling `Featureflow.init(..., ..., config)` to listen for realtime updates via SSE |
-| `useCookies` | `boolean` | `true` | Set to `false` if you do not want to use cookies (you will have to pass the result of `featureflow.getAnonymousId()` to any future requests if you wish for the server to match the client anonymous key)  |
-| `defaultFeatures` | `object` | `undefined` | A flat key-value object representing the default variants a feature should be set to if there is an interrupted connection and no cached value.  <br/> <br/> *e.g. if you set `config.defaultFeatures` to `{'my-feature': 'on'}`, `featureflow.evaluate('my-feature').isOn()` will return `true` when there is an interrupted connection to Featureflow and no locally cached feature features.*|
-| `offline` | `boolean` | `false` | Set to `true` to run in offline mode, this is for testing purposes. Featureflow will not attempt and calls and will use the defaultFeatures values only  |
-| `application` | `string` | `undefined` | Names this site or app (e.g. `'web-app'`) so the dashboard can attribute SDK usage and flag evaluations to it — see [Application Tags](/application-tags) |
-
-#### Events
-#### `Featureflow.events.LOADED_FROM_CACHE`
-Fired when features have been loaded from localstorage.
-Triggered by both `Featureflow.init(...)` and `featureflow.updateUser`.
-
-Callback is fired with one parameter with the value of all evaluated `features`.
-
-#### `Featureflow.events.INIT`
-Fired when features have been evaluated and loaded.
-Triggered by both `Featureflow.init(...)` and `featureflow.updateUser`.
-
-Callback is fired with one parameter with the value of all evaluated `features`.
-
-#### `Featureflow.events.LOADED`
-**Deprecated:** Use `Featureflow.events.INIT` instead.
-
-#### `Featureflow.events.UPDATED_FEATURE`
-Only available when streaming is enabled.
-Fired when a feature has been changed.
-
-Callback is fired with one parameter with the value of only the updated `features` returned by the stream. In the majority of cases, this object will only contain one property.
-
-#### `Featureflow.events.ERROR`
-Fired when an error has occurred evaluating the feature features for the given user.
-
-Callback is fired with one parameter with the error message.
-
-
-## License
-
-Apache-2.0
-
-[npm-url]: https://nodei.co/npm/featureflow-client
-[npm-img]: https://nodei.co/npm/featureflow-client.png
-
-[dependency-url]: https://www.featureflow.io
-[dependency-img]: https://www.featureflow.io/wp-content/uploads/2016/12/featureflow-web.png
+- [featureflow-javascript-sdk on GitHub](https://github.com/featureflow/featureflow-javascript-sdk), including a runnable example and the changelog
+- [ReactJS Client](/reactjs-client) for React apps
+- [Quick Start - AI coding agent](/quick-start-ai-agent) to have your agent do the wiring

@@ -4,9 +4,11 @@ sidebar_label: Node.js SDK
 slug: /nodejs-sdk
 ---
 
-Get your Featureflow account at [featureflow.com](https://www.featureflow.com)
-
 GitHub: https://github.com/featureflow/featureflow-node-sdk
+
+`featureflow-node-sdk` is the Featureflow SDK for server-side JavaScript and TypeScript. It downloads your environment's feature rules, keeps them in memory, and evaluates flags locally for any user you pass in, so an evaluation is a map lookup and rule match rather than a network call.
+
+Uses a **server** SDK key (`sdk-srv-env-…`). It is secret: it downloads your entire ruleset, so it belongs in server processes only. For browser code use the [Javascript Client](/javascript-client); for React components use the [ReactJS Client](/reactjs-client). A Next.js or Remix app usually needs both.
 
 ## Installation
 
@@ -28,15 +30,17 @@ const featureflow = new Featureflow.Client({
 });
 ```
 
-Or using ES6 imports:
+Or using ES modules and TypeScript, which the package ships types for:
 
-```javascript
+```typescript
 import Featureflow from 'featureflow-node-sdk';
 
 const featureflow = new Featureflow.Client({
-  apiKey: 'sdk-srv-env-YOUR_API_KEY'
+  apiKey: process.env.FEATUREFLOW_SERVER_KEY
 });
 ```
+
+`Featureflow` exposes `Featureflow.Client`, `Featureflow.UserBuilder` and `Featureflow.Feature`.
 
 :::caution Singleton Pattern
 The `featureflow` client should be instantiated once and shared across your application. Do not create a new client for each request.
@@ -125,6 +129,30 @@ For simple cases, you can pass just the user ID:
 ```javascript
 featureflow.evaluate('my-feature', 'user-123').isOn();
 ```
+
+## Goals and Experiments
+
+Record a goal (conversion or metric) event for the user. The optional third argument is a number, the metric value, or an object whose optional numeric `value` is the metric value and whose other fields are sent as custom data:
+
+```javascript
+featureflow.track('signup', user);
+featureflow.track('checkout-value', user, 129.90);
+featureflow.track('purchase', user, { value: 129.90, plan: 'pro' });
+```
+
+Fire the goal where the conversion happens, and for every variant including the control. Goal events are batched and flushed with evaluation events. To analyse experiments in your own analytics tool, see [A/B testing](/ab-testing).
+
+## Reacting to Changes
+
+Flag rules are polled in the background and applied automatically. If you cache anything derived from a flag, listen for the `updated` event to refresh it:
+
+```javascript
+featureflow.on('updated', () => {
+  // feature configuration changed
+});
+```
+
+The client also emits `evaluation` with `{ key, variant, value, user }` each time a variant is read, which is the hook for forwarding exposures to an analytics tool. See the [README](https://github.com/featureflow/featureflow-node-sdk#forwarding-evaluations-to-analytics-tools) for details.
 
 ## Pre-registering Features
 
@@ -227,7 +255,9 @@ See the full [Express example](https://github.com/featureflow/featureflow-node-e
 - [Managing Variants](/manage-feature-variants) — Create custom feature states
 - [AWS Lambda Guide](/using-featureflow-with-aws-lambda) — Serverless integration
 
-## License
+## Further reading
 
-Apache-2.0
+- [featureflow-node-sdk on GitHub](https://github.com/featureflow/featureflow-node-sdk), including the changelog
+- [Express example app](https://github.com/featureflow/featureflow-node-example)
+- [Quick Start - AI coding agent](/quick-start-ai-agent) to have your agent do the wiring
 

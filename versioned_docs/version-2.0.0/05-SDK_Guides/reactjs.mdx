@@ -4,223 +4,206 @@ sidebar_label: ReactJS Client
 slug: /reactjs-client
 ---
 
-Github: https://github.com/featureflow/featureflow-angular
+Github: https://github.com/featureflow/react-featureflow-client
 
-Firstly, Get your Featureflow account at [featureflow.com](https://www.featureflow.com)
+`react-featureflow-client` is the official React binding over the [Featureflow Javascript Client](/javascript-client). It gives you a provider for the app root and hooks for your components. It bundles `featureflow-client`, so there is nothing else to install.
+
+Uses a **client** SDK key (`sdk-js-env-…`), which is public by design. Find it on the Projects page by clicking the key icon next to your environment.
 
 :::note
-Version ^2.x.x uses the new react context API and therefore requires react > 16.3
-To use featureflow with versions of react below 16.3, please use the 1.x.x client.
-
-When using the 1.x client you will need to also include the core javascript api:
-
-```bash
-$ npm install --save featureflow-client
-```
-Version 2.x.x includes the core javascript SDK so there is no need to install it in addition to `react-featureflow-client`.
-
+Version 2.x uses the React context API and requires React 16.3 or later. If you are on the 1.x client, see [Migrating from 1.x](#migrating-from-1x).
 :::
 
 ## Installation
 
-Using NPM
-
 ```sh
-$ npm install --save react-featureflow-client
+npm install --save react-featureflow-client
 ```
 
-## Getting Started
-Getting started is simple:
+## Getting started
 
-1. Wrap your application with a featureflow provider - there should only be one provider - it should sit at your top level App component.
+### 1. Wrap your app in one provider
 
-If you have
-```javascript
-  ReactDOM.render(
-      <App feature="example-feature"/>,
-    document.getElementById('root')
-  );
-```
+There should be exactly one provider, at the top of your component tree. The recommended option is `asyncFeatureflowProvider`, which initialises the client **before** React renders, so there is no flash of the wrong variant:
 
-wrap `App` using `withFeatureflowProvider`:
+```tsx
+// index.tsx
+import ReactDOM from 'react-dom/client';
+import { asyncFeatureflowProvider } from 'react-featureflow-client';
+import App from './App';
 
-```javascript
-import { withFeatureflowProvider, useFeatureflow, useFeatures } from 'react-featureflow-client'
-
-const FF_KEY = 'sdk-js-env-YOUR_KEY_HERE';
 const user = {
+  id: 'user-123',
   attributes: {
     tier: 'gold',
-    country: 'australia',
-    roles: ['role1', 'role2']
+    country: 'australia'
   }
 };
 
-export default (withFeatureflowProvider({
-  apiKey: FF_KEY,
-  user
-})(App))
+const initApp = async () => {
+  const FeatureflowProvider = await asyncFeatureflowProvider({
+    apiKey: 'sdk-js-env-YOUR_KEY_HERE',
+    user
+  });
+
+  ReactDOM.createRoot(document.getElementById('root')!).render(
+    <FeatureflowProvider>
+      <App />
+    </FeatureflowProvider>
+  );
+};
+
+initApp();
 ```
 
-2. You then have access to the `featureflow` client and evaluated `features` using hooks:
+### 2. Read a flag with `useFeature`
 
-```javascript
-import { useFeatureflow, useFeatures } from 'react-featureflow-client'
-
-const App: React.FC<Props> = () => {
-
-  const featureflow = useFeatureflow();
-  const features = useFeatures();
-  const feature = 'example-feature';
-
-  return  <div>
-    <h1>A very simple example</h1>
-    <b>{feature}</b>
-    { featureflow.evaluate(feature).isOn() && [
-        <p key="1">I am on</p>,
-    ]}
-    { featureflow.evaluate(feature).isOff() && [
-      <p key="1">I am off</p>,
-      ]
-    }
-    {Object.keys(features).map(key => <div>{key} : {features[key]}</div>)}
-  </div>
-}
-```
-
-If you want your component to wait until featureflow has received an initial response, set `config.waitForInit = true`
-in the featureflowConfig.
-
-If you want to render a different component while waiting on response from featureflow, you can pass in `config.preInitComponent = <YourComponent/>`.
-
-This is especially useful if you may have a race condition with your application on initial load of features.
-
-:::tip
-
-Note that loading featureflow features is highly optimised and globally cached. Features typically load in milliseconds (often < 2ms). 
-
-In addition, any reloads are cached on the local browser making subsequent feature loads practically instant.
-
-:::
-
-```javascript
-
-const featureflowConfig = {
-    waitForInit: true,
-    preInitComponent: <YourComponent/>
-}
-
-export default withFeatureflow(featureflowConfig)(MyComponent);
-```
-
-### API
-`react-featureflow-client` exposes 2 properties.
-```javascript
-import {
-  FeatureflowProvider,
-  withFeatureflow
-} from 'react-featureflow-client';
-```
-#### `<FeatureflowProvider client>`
-Connects your featureflow to your React application. Must only have one child.
-
-| Params | Type | Default | Description |
-|---------------|----------|--------------|----------------------------------------------------------------|
-| `client*` | `featureflow` | **`Required`** | An instantiated featureflow client |
-
-#### `withFeatureflow([mapFeatureListeners], [clientProp])(Component)`
-Pass the featureflow client to a React Component's props.
-
-| Params | Type | Default | Description |
-|---------------|----------|--------------|----------------------------------------------------------------|
-| `featureflowConfig` | `object` | `{}` | Use to set the `update` property and featureflow `clientName` specifically for the component. See `FeatureflowConfig`. |
-| `Component` | `Component` | **`Required`** | The component to pass the featureflow client to.  |
-
-
-#### `FeatureflowConfig`
-| Properties | Type | Default | Description |
-|---------------|----------|--------------|----------------------------------------------------------------|
-| `update` | `boolean` | `false` | If set to `true` then when features update from featureflow, the component will update automatically.  |
-| `clientName` | `string` | `"featureflow"` | Use this to change the prop that the featureflow client will bind to.  |
-| `waitForInit` | `boolean` | `false` | Use this to wait for featureflow to respond with features before the rendering the component   |
-| `preInitComponent` | `ReactComponent` | `undefined` | Use this display another component when the featureflow rules haven't loaded and `waitForInit` is `true`  |
-
-
-```javascript
-import { withFeatureflowProvider, useFeatureflow } from 'react-featureflow-client'
-
-// Feature flag key
-const FEATURE_KEY = 'my-feature';
-
-// Component that will be shown when feature is ON
-const NewWelcomeMessage = () => (
-  <div className="welcome-message new">
-    <h1>Welcome to the Future!</h1>
-    <p>You're seeing our new, improved welcome message</p>
-  </div>
-)
-
-// Component that will be shown when feature is OFF
-const OldWelcomeMessage = () => (
-  <div className="welcome-message old">
-    <h1>Hello World!</h1>
-    <p>Welcome to React v19</p>
-  </div>
-)
-
-function App() {
-  const featureflow = useFeatureflow()
-  const isOn = featureflow.evaluate(FEATURE_KEY).isOn()
-
-  return (
-    <div className="app-container">
-      {isOn ? <NewWelcomeMessage /> : <OldWelcomeMessage />}      
-    </div>
-  )
-}
-
-const FF_KEY = 'sdk-js-env-mykey'
-const user = {
-  id: 'test-user-1',
-  attributes: {
-    email: 'test@example.com',
-    plan: 'free'
-  }
-}
-
-export default withFeatureflowProvider({
-  apiKey: FF_KEY,
-  user
-})(App)
-
-```
-
-For more, see the github repo [Featureflow Javascript Client](https://github.com/featureflow/featureflow-javascript-sdk)
-
-### Naming your application
-
-Optionally name this app so the dashboard can attribute SDK usage and flag evaluations to it, by passing `application` in the provider's `config` (it is forwarded to the underlying Javascript client):
+`useFeature(key)` evaluates one feature and returns the full evaluation — `isOn()`, `isOff()`, `is(variant)`, `value()` and `jsonValue()`. The component re-renders automatically whenever the flag changes, including when the user is updated.
 
 ```tsx
+// Checkout.tsx
+import { useFeature } from 'react-featureflow-client';
+
+function Checkout() {
+  const newCheckout = useFeature('new-checkout');
+
+  if (newCheckout.isOn()) {
+    return <NewCheckout />;
+  }
+  return <LegacyCheckout />;
+}
+```
+
+Multivariate flags work the same way:
+
+```tsx
+function PricingPage() {
+  const pricing = useFeature('pricing-layout');
+
+  if (pricing.is('compact')) return <CompactPricing />;
+  if (pricing.is('detailed')) return <DetailedPricing />;
+  return <DefaultPricing />;
+}
+```
+
+:::tip Prefer `useFeature` in render
+`useFeatureflow().evaluate(key)` reads the value once at render time and will **not** re-render your component when the flag changes underneath it. `useFeature` subscribes to updates. Reach for the client directly only for imperative work such as `updateUser`.
+
+Likewise, do not copy a flag value into `useState` — that snapshots it and defeats live updates.
+:::
+
+That is all a typical app needs. The rest of this page covers the other providers and hooks.
+
+## Providers
+
+### `asyncFeatureflowProvider` (recommended)
+
+Shown above. Resolves to a provider component once the first evaluation has landed. The cost is a short delay before first paint; if your app already shows a splash or skeleton this is the right trade.
+
+```tsx
+const FeatureflowProvider = await asyncFeatureflowProvider({
+  apiKey: 'sdk-js-env-YOUR_KEY',
+  user: { id: 'user-123', attributes: { plan: 'premium' } },
+  config: { offline: false } // optional
+});
+```
+
+### `FeatureflowProvider`
+
+Initialises the client in `useEffect` **after** mount. Simpler, but flag-driven UI above the fold can flicker on first load. Use it when flags only affect UI below the fold or behind an interaction.
+
+```tsx
+import { FeatureflowProvider } from 'react-featureflow-client';
+
 <FeatureflowProvider
   apiKey="sdk-js-env-YOUR_KEY"
-  user={user}
-  config={{ application: 'web-app' }}
+  user={{ id: 'user-123', attributes: { plan: 'premium' } }}
+  config={{ offline: false }}
 >
   <App />
 </FeatureflowProvider>
 ```
 
-See [Application Tags](/application-tags) for the naming rules and what the tag powers.
+### `FeatureflowProviderWithClient`
 
-### JSON Configuration Values
+For an existing client instance, for example one shared with non-React code:
+
+```tsx
+import Featureflow from 'featureflow-client';
+import { FeatureflowProviderWithClient } from 'react-featureflow-client';
+
+const client = await Featureflow.init('sdk-js-env-YOUR_KEY', user);
+
+<FeatureflowProviderWithClient client={client}>
+  <App />
+</FeatureflowProviderWithClient>
+```
+
+Whichever you pick, use **one provider at the app root**. Nested providers mean two clients, two sets of impression events, and components that disagree about the same flag.
+
+### Provider props
+
+| Prop | Type | Required | Description |
+|------|------|----------|-------------|
+| `apiKey` | `string` | Yes | Your client SDK key (`sdk-js-env-…`) |
+| `user` | `FeatureflowUser` | No | User context for targeting: `{ id, attributes }` |
+| `config` | `Config` | No | Client configuration, forwarded to `featureflow-client` |
+
+## Hooks
+
+```tsx
+import {
+  useFeature,
+  useFeatures,
+  useFeatureflow,
+  useJsonValue,
+  useTrack
+} from 'react-featureflow-client';
+```
+
+| Hook | Returns |
+|---|---|
+| `useFeature(key)` | The full evaluation for one feature: `isOn()`, `isOff()`, `is(variant)`, `value()`, `jsonValue()`. Re-renders on change. |
+| `useFeatures()` | Every evaluated feature as `{ key: variant }`. Re-renders on change. |
+| `useFeatureflow()` | The client itself, for `updateUser` and other imperative use. |
+| `useJsonValue<T>(key)` | The evaluated variant's JSON config payload, or `undefined`. |
+| `useTrack()` | A stable `track(goalKey, details?)` function for goal events. |
+
+### `useFeatures`
+
+Useful for debug panels or when a component depends on several flags:
+
+```tsx
+const features = useFeatures();
+// { 'new-checkout': 'on', 'pricing-layout': 'compact', ... }
+```
+
+### `useTrack`
+
+Track a goal against the current user. `details` is either a number (the metric value) or an object whose optional `value` is the metric value and whose remaining properties are sent as custom data.
+
+```tsx
+import { useFeature, useTrack } from 'react-featureflow-client';
+
+function Checkout() {
+  const newCheckout = useFeature('new-checkout');
+  const track = useTrack();
+
+  if (newCheckout.isOn()) {
+    return <NewCheckout onComplete={() => track('purchase', { value: 49.95 })} />;
+  }
+  return <LegacyCheckout onComplete={() => track('purchase', { value: 49.95 })} />;
+}
+```
+
+### JSON configuration values with `useJsonValue` {#json-configuration-values}
 
 _Requires `react-featureflow-client >= 2.2.0` (which depends on `featureflow-client >= 2.2.0`) — see [SDK Compatibility](/sdk-compatibility)._
 
-If a variant has a [JSON config value](/manage-feature-variants#json-configuration-values) set in the dashboard, use the `useJsonValue` hook to read it directly:
+If a variant has a [JSON config value](/manage-feature-variants#json-configuration-values) set in the dashboard, `useJsonValue` reads it directly:
 
-```javascript
-import { useJsonValue } from 'react-featureflow-client'
+```tsx
+import { useJsonValue } from 'react-featureflow-client';
 
 interface ThemeConfig {
   color: string;
@@ -238,13 +221,9 @@ function CheckoutButton() {
 }
 ```
 
-`useJsonValue` returns `undefined` if the resolved variant has no JSON config set, so always provide a fallback. It re-evaluates automatically whenever the underlying feature updates, the same as `useFeature` and `useFeatures`.
+`useJsonValue` returns `undefined` if the resolved variant has no JSON config set, so always provide a fallback. If you need the variant and the payload together, `useFeature` exposes the same thing through `jsonValue()`:
 
-If you need the full evaluation result (variant key, `isOn()`/`isOff()`, and the JSON value together), use `useFeature` instead:
-
-```javascript
-import { useFeature } from 'react-featureflow-client'
-
+```tsx
 function CheckoutButton() {
   const evaluation = useFeature('checkout-theme');
   const theme = evaluation.jsonValue<ThemeConfig>();
@@ -256,3 +235,75 @@ function CheckoutButton() {
   );
 }
 ```
+
+## Updating the user
+
+Call `updateUser` on login, on logout, and whenever an attribute used in targeting changes. Every component using `useFeature` or `useFeatures` re-renders with the new values:
+
+```tsx
+import { useFeatureflow } from 'react-featureflow-client';
+
+const featureflow = useFeatureflow();
+
+await featureflow.updateUser({
+  id: user.id,
+  attributes: { tier: user.tier, beta: user.inBetaProgram }
+});
+```
+
+## Naming your application
+
+Optionally name this app so the dashboard can attribute SDK usage and flag evaluations to it, by passing `application` in the provider's `config` (it is forwarded to the underlying Javascript client):
+
+```tsx
+<FeatureflowProvider
+  apiKey="sdk-js-env-YOUR_KEY"
+  user={user}
+  config={{ application: 'web-app' }}
+>
+  <App />
+</FeatureflowProvider>
+```
+
+See [Application Tags](/application-tags) for the naming rules and what the tag powers.
+
+## Testing components
+
+Wrap the component under test in a provider configured offline. No network, deterministic variants, and both branches are testable by flipping `defaultFeatures`:
+
+```tsx
+<FeatureflowProvider
+  apiKey="test"
+  config={{ offline: true, defaultFeatures: { 'new-checkout': 'on' } }}
+>
+  <Checkout />
+</FeatureflowProvider>
+```
+
+Write a test for each branch — an untested flag branch is the usual reason a rollout gets reverted.
+
+## TypeScript
+
+The package ships its own definitions:
+
+```tsx
+import type {
+  FeatureflowUser,
+  FeatureflowClient,
+  Config,
+  EvaluatedFeatures,
+  Evaluate
+} from 'react-featureflow-client';
+```
+
+## Migrating from 1.x
+
+- Use `asyncFeatureflowProvider` or `FeatureflowProvider` instead of `withFeatureflowProvider`.
+- Use the hooks (`useFeature`, `useFeatures`, `useFeatureflow`) instead of the `withFeatureflow` HOC.
+- `featureflow-client` is bundled, so remove it from your own dependencies unless other code uses it directly.
+
+## Further reading
+
+- [react-featureflow-client on GitHub](https://github.com/featureflow/react-featureflow-client), including a runnable example app
+- [Featureflow Javascript Client](/javascript-client) for the client options `config` accepts
+- [Quick Start - AI coding agent](/quick-start-ai-agent) to have your agent do the wiring

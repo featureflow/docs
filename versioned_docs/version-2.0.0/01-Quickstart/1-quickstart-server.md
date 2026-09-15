@@ -18,7 +18,7 @@ Get Featureflow integrated into your server application in minutes.
 <dependency>
     <groupId>io.featureflow</groupId>
     <artifactId>featureflow-java-sdk</artifactId>
-    <version>1.2.3</version>
+    <version>1.4.2</version>
 </dependency>
 ```
 
