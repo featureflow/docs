@@ -21,6 +21,7 @@ const config = {
   deploymentBranch: 'main',
   trailingSlash: false,
   themes: ['@docusaurus/theme-live-codeblock'],
+  plugins: [require.resolve('./src/plugins/ga4-cross-domain')],
   // Even if you don't use internalization, you can use this field to set useful
   // metadata like html lang. For example, if your site is Chinese, you may want
   // to replace "en" with "zh-Hans".
@@ -37,15 +38,26 @@ const config = {
         docs: {
           sidebarPath: require.resolve('./sidebars.js'),
           routeBasePath: '/', // Serve the docs at the site's root
+          // 2.0.0 (versions.json[0]) is the version served at the site root.
+          // noIndex adds a robots noindex meta tag, and the sitemap plugin
+          // drops those routes. Canonical-to-current is not a docs option, and
+          // 1.0.0 / next do not share a page-for-page URL map with 2.0.0.
+          versions: {
+            current: {
+              noIndex: true,
+            },
+            '1.0.0': {
+              noIndex: true,
+            },
+          },
         },
         blog: false,
         theme: {
           customCss: require.resolve('./src/css/custom.css'),
         },
-        gtag: {
-          trackingID: 'G-4S76ENL11R',
-          anonymizeIP: true,
-        },
+        // GA4 is installed by src/plugins/ga4-cross-domain.js so the existing
+        // G-4S76ENL11R tag can set a cross-domain linker. The preset plugin
+        // only accepts trackingID and anonymizeIP.
       }),
     ],
   ],
@@ -61,6 +73,11 @@ const config = {
         },
         items: [
           {
+            href: 'https://www.featureflow.com',
+            label: 'Featureflow.com',
+            position: 'left',
+          },
+          {
             href: 'https://api.featureflow.com/api/swagger-ui/index.html',
             label: 'API Reference',
             position: 'left',
@@ -74,6 +91,12 @@ const config = {
             label: 'GitHub',
             position: 'right',
           },
+          {
+            href: 'https://app.featureflow.com/register',
+            label: 'Sign up',
+            position: 'right',
+            className: 'navbar__item--signup',
+          },
         ],
       },
       footer: {
@@ -83,12 +106,16 @@ const config = {
             title: 'Links',
             items: [
               {
-                label: 'featureflow.com',
-                href: 'https://featureflow.com',
+                label: 'Featureflow.com',
+                href: 'https://www.featureflow.com',
+              },
+              {
+                label: 'Sign up',
+                href: 'https://app.featureflow.com/register',
               },
               {
                 label: 'Blog',
-                href: 'https://featureflow.com/blog',
+                href: 'https://www.featureflow.com/blog',
               },
               {
                 label: 'GitHub',
